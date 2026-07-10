@@ -1,0 +1,24 @@
+📋 جدول خلاصه دسته‌بندی اصلی
+دسته اصلی	زیرشاخه‌ها	پسوندها
+تصاویر	انسان، حیوان (پستاندار/پرنده/آبزی/حشرات)، منظره (دریا/کوه/دشت/رودخانه/جنگل/کویر/آبشار/شهر/گلستان/شب)، گیاه (گل/درخت/میوه/سبزیجات)، غذا (ایرانی/فرنگی/شیرینی)، ساختمان (مدرن/تاریخی/مذهبی/مسکونی)، خودرو (سواری/موتور/سنگین/هوایی/دریایی)، اسناد (فاکتور/قرارداد/نامه/مدارک/گزارش)، اشیاء (ظروف_آشپزخانه/گلدان/مبلمان/ابزار/الکترونیک/کتاب/لوگو/پوشاک/اسباب‌بازی)، هنر (تذهیب/فلش/نقاشی/طراحی/خوشنویسی)، تکسچر (چوب/سنگ/فلز/پارچه/شیشه/آجر/گچ/کاغذدیواری)، سایر	.jpg, .jpeg, .png, .gif, .bmp, .tiff, .webp, .svg, .ico, .psd, .raw, .heic
+وکتور	CorelDRAW, Illustrator, Photoshop, EPS, SVG, Figma, Sketch, Affinity	.cdr, .ai, .psd, .eps, .svg, .fig, .sketch, .afdesign
+معماری	AutoCAD, SketchUp, 3ds Max, Revit, تبادل	.dwg, .dxf, .skp, .rvt, .ifc, .step, .stp
+سه‌بعدی	Blender, Maya, 3ds Max, Cinema4D, تبادل, چاپ سه‌بعدی, VR/AR	.blend, .ma, .mb, .max, .3ds, .c4d, .fbx, .obj, .dae, .gltf, .glb, .stl, .3mf, .vrm, .x3d
+موسیقی	خواننده/آلبوم، بی‌کلام، پادکست، صدای محیط، افکت، MIDI	.mp3, .wav, .flac, .aac, .ogg, .m4a, .wma, .opus, .aiff, .mid, .midi
+ویدئو	سال، کیفیت، کاربرد	.mp4, .avi, .mkv, .mov, .wmv, .flv, .webm, .mpeg, .mpg, .3gp, .m4v, .ts
+اسناد	PDF، متنی، داده، وب، کد	.pdf, .txt, .rtf, .md, .log, .csv, .json, .xml, .yml, .html, .htm, .css, .js, .py, .cpp, .c, .java, .php, .sql, .ipynb
+آفیس	Word, Excel, PowerPoint, OpenDocument	.doc, .docx, .xls, .xlsx, .ppt, .pptx, .odt, .ods, .odp
+نرم‌افزار	ویندوز، اندروید، iOS، لینوکس، مک	.exe, .msi, .bat, .cmd, .ps1, .apk, .ipa, .deb, .rpm, .run, .AppImage, .sh, .bin, .dmg, .pkg, .app
+فشرده	زیپ، رار، ۷زیپ، لینوکس، ایزو	.zip, .rar, .7z, .tar, .gz, .bz2, .xz, .iso
+پایگاه داده	SQL, SQLite, Access	.sql, .db, .sqlite, .mdb, .accdb
+بازی	Unity, Unreal, Godot, Save, ROM	.unity, .uproject, .godot, .sav, .rom
+سایر	تورنت، لاگ، موقت، پشتیبان	.torrent, .log, .tmp, .bak, .old
+📌 نکات مهم
+تاریخ شمسی و میلادی در پوشه‌های تصاویر/انسان، تصاویر/خانوادگی و ویدئو قابل اعمال است.
+
+زیرشاخه‌های وکتور و معماری بر اساس نام نرم‌افزار و کاربرد دسته‌بندی می‌شوند.
+
+فایل‌های بدون دسته‌بندی در پوشه‌ی سایر قرار می‌گیرند.
+
+تشخیص محتوا با استفاده از مدل Gemma 3 4B و کلمات کلیدی انجام می‌شود.
+

@@ -1,0 +1,729 @@
+"""
+ArchivePro - نسخه شبیه‌سازی‌شده (بدون Gemma)
+دسته‌بندی بر اساس پسوند و کلمات کلیدی در نام فایل
+"""
+
+import sys
+import os
+import shutil
+import hashlib
+import json
+import sqlite3
+import time
+from datetime import datetime
+from pathlib import Path
+from typing import List, Dict, Optional, Tuple
+
+from PySide6.QtWidgets import *
+from PySide6.QtCore import *
+from PySide6.QtGui import *
+
+# ============================================================
+# کلاس ترجمه (دو زبانه)
+# ============================================================
+
+class Translator:
+    def __init__(self):
+        self.lang = "fa"
+        self.strings = {
+            "fa": {
+                "app_title": "ArchivePro - بایگانی هوشمند",
+                "source": "مبدا:", "dest": "مقصد:",
+                "source_placeholder": "پوشه‌ای که فایل‌ها در آن هستند",
+                "dest_placeholder": "پوشه‌ای که فایل‌ها دسته‌بندی می‌شوند",
+                "browse": "انتخاب",
+                "delete": "🗑️ حذف کامل پوشه مبدا پس از اتمام",
+                "start": "🚀 شروع دسته‌بندی",
+                "pause": "⏸️ مکث",
+                "resume": "▶️ ادامه",
+                "stop": "⏹️ توقف",
+                "report": "تولید گزارش",
+                "progress": "%p% - %v از %m فایل",
+                "ready": "✅ آماده",
+                "processing": "⏳ در حال پردازش...",
+                "paused": "⏸️ در حالت مکث",
+                "completed": "✅ دسته‌بندی کامل شد",
+                "files": "فایل‌ها: {} از {}",
+                "tab_log": "📋 گزارش لحظه‌ای",
+                "tab_report": "📊 گزارش نهایی",
+                "error": "خطا",
+                "error_folder": "لطفاً یک پوشه معتبر انتخاب کنید.",
+                "error_folders": "لطفاً هر دو پوشه را انتخاب کنید.",
+                "error_same": "پوشه مبدا و مقصد نباید یکسان باشند.",
+                "info_done": "✅ اتمام کار",
+                "info_text": "دسته‌بندی با موفقیت انجام شد.\n\n📊 {} فایل کپی شدند.",
+                "lang": "زبان",
+                "theme": "تم",
+                "menu_file": "فایل",
+                "menu_exit": "خروج",
+                "menu_help": "راهنما",
+                "about": "درباره",
+                "about_text": "ArchivePro - بایگانی هوشمند\n\nنسخه 2.0\n\nتوسعه‌دهنده: Majid Dehaki\n\nتمامی حقوق محفوظ است.",
+                "settings_title": "تنظیمات",
+                "sort_date": "دسته‌بندی بر اساس تاریخ شمسی",
+                "sort_location": "دسته‌بندی بر اساس لوکیشن (GPS)",
+                "phone_subfolder": "تشخیص عکس‌های گوشی و قرار دادن در 'گوشی'",
+                "folder_phone": "گوشی",
+                "scanning": "🔍 در حال اسکن...",
+                "scan_complete": "✅ اسکن کامل شد",
+                "warning_title": "⚠️ هشدار",
+                "warning_text": "⚠️ شما گزینه‌ی حذف کامل پوشه مبدا را فعال کرده‌اید.\n\nپس از اتمام، کل پوشه مبدا حذف خواهد شد.\n\nاین عمل غیرقابل بازگشت است. آیا مطمئن هستید؟"
+            },
+            "en": {
+                "app_title": "ArchivePro - Smart Archiving",
+                "source": "Source:", "dest": "Destination:",
+                "source_placeholder": "Folder containing files",
+                "dest_placeholder": "Folder for classified files",
+                "browse": "Browse",
+                "delete": "🗑️ Delete entire source folder after completion",
+                "start": "🚀 Start Classification",
+                "pause": "⏸️ Pause",
+                "resume": "▶️ Resume",
+                "stop": "⏹️ Stop",
+                "report": "Generate Report",
+                "progress": "%p% - %v of %m files",
+                "ready": "✅ Ready",
+                "processing": "⏳ Processing...",
+                "paused": "⏸️ Paused",
+                "completed": "✅ Classification completed",
+                "files": "Files: {} of {}",
+                "error": "Error",
+                "error_folder": "Please select a valid folder.",
+                "error_folders": "Please select both source and destination folders.",
+                "error_same": "Source and destination folders cannot be the same.",
+                "info_done": "✅ Done",
+                "info_text": "Classification completed successfully.\n\n📊 {} files copied.",
+                "lang": "Language",
+                "theme": "Theme",
+                "menu_file": "File",
+                "menu_exit": "Exit",
+                "menu_help": "Help",
+                "about": "About",
+                "about_text": "ArchivePro - Smart Archiving\n\nVersion 2.0\n\nDeveloper: Majid Dehaki\n\nAll rights reserved.",
+                "settings_title": "Settings",
+                "sort_date": "Sort by Persian date (Shamsi)",
+                "sort_location": "Sort by location (GPS)",
+                "phone_subfolder": "Detect phone images/videos and put in 'Phone'",
+                "folder_phone": "Phone",
+                "scanning": "🔍 Scanning...",
+                "scan_complete": "✅ Scan complete",
+                "warning_title": "⚠️ Warning",
+                "warning_text": "⚠️ You have enabled deleting the entire source folder.\n\nAfter completion, the entire source folder will be deleted.\n\nThis action is irreversible. Are you sure?"
+            }
+        }
+
+    def tr(self, key, *args):
+        text = self.strings.get(self.lang, {}).get(key, key)
+        return text.format(*args) if args else text
+
+    def set_lang(self, lang):
+        if lang in ["fa", "en"]:
+            self.lang = lang
+
+
+# ============================================================
+# کلاس مدیریت دیتابیس
+# ============================================================
+
+class DatabaseManager:
+    def __init__(self, db_path="archivepro.db"):
+        self.conn = sqlite3.connect(db_path, check_same_thread=False)
+        self.cursor = self.conn.cursor()
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS files (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                source_path TEXT,
+                dest_path TEXT,
+                category TEXT,
+                sub_category TEXT,
+                filename TEXT,
+                file_hash TEXT,
+                size INTEGER,
+                date_taken TEXT,
+                metadata TEXT,
+                scan_date TEXT
+            )
+        ''')
+        self.conn.commit()
+
+    def insert_file(self, data):
+        self.cursor.execute('''
+            INSERT OR REPLACE INTO files (
+                source_path, dest_path, category, sub_category,
+                filename, file_hash, size, date_taken, metadata, scan_date
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            data.get('source', ''),
+            data.get('dest', ''),
+            data.get('category', ''),
+            data.get('sub_cat', ''),
+            Path(data.get('dest', '')).name,
+            data.get('metadata', {}).get('file_hash', ''),
+            data.get('metadata', {}).get('size', 0),
+            data.get('metadata', {}).get('date_taken', ''),
+            json.dumps(data.get('metadata', {})),
+            datetime.now().isoformat()
+        ))
+        self.conn.commit()
+
+    def get_all_files(self):
+        self.cursor.execute('SELECT * FROM files ORDER BY filename')
+        rows = self.cursor.fetchall()
+        cols = [d[0] for d in self.cursor.description]
+        return [dict(zip(cols, row)) for row in rows]
+
+    def close(self):
+        if self.conn:
+            self.conn.close()
+
+
+# ============================================================
+# کلاس تشخیص محتوا (شبیه‌سازی با کلمات کلیدی)
+# ============================================================
+
+class ContentDetector:
+    @staticmethod
+    def detect(image_path: str) -> Tuple[str, str]:
+        filename = Path(image_path).stem.lower()
+        
+        # کلمات کلیدی برای دسته‌بندی
+        if any(k in filename for k in ['person', 'people', 'man', 'woman', 'child', 'انسان', 'مرد', 'زن']):
+            return ("انسان", "")
+        if any(k in filename for k in ['food', 'meal', 'pizza', 'pasta', 'burger', 'kebab', 'غذا', 'خوراک']):
+            return ("غذا", "")
+        if any(k in filename for k in ['cat', 'dog', 'horse', 'lion', 'tiger', 'گربه', 'سگ', 'شیر']):
+            return ("حیوان", "")
+        if any(k in filename for k in ['sea', 'ocean', 'beach', 'mountain', 'river', 'lake', 'forest', 'دریا', 'کوه', 'جنگل']):
+            return ("منظره", "")
+        if any(k in filename for k in ['flower', 'rose', 'tulip', 'tree', 'گل', 'رز', 'درخت']):
+            return ("گیاه", "")
+        if any(k in filename for k in ['building', 'house', 'church', 'mosque', 'temple', 'ساختمان', 'مسجد', 'کلیسا']):
+            return ("ساختمان", "")
+        if any(k in filename for k in ['car', 'automobile', 'motorcycle', 'truck', 'ماشین', 'خودرو']):
+            return ("خودرو", "")
+        if any(k in filename for k in ['logo', 'brand', 'لوگو', 'برند']):
+            return ("اشیاء", "لوگو")
+        if any(k in filename for k in ['plate', 'cup', 'bowl', 'glass', 'ظرف', 'بشقاب', 'لیوان']):
+            return ("اشیاء", "ظروف_آشپزخانه")
+        
+        return ("سایر", "")
+
+
+# ============================================================
+# موتور دسته‌بندی
+# ============================================================
+
+class ClassificationEngine:
+    EXTENSION_MAP = {
+        'وکتور': ['.cdr', '.ai', '.eps', '.svg', '.psd', '.afdesign'],
+        'معماری': ['.dwg', '.dxf', '.skp', '.rvt', '.ifc', '.step', '.stp'],
+        'سه‌بعدی': ['.blend', '.max', '.3ds', '.c4d', '.fbx', '.obj', '.stl'],
+        'موسیقی': ['.mp3', '.wav', '.flac', '.aac', '.ogg', '.m4a', '.wma'],
+        'ویدئو': ['.mp4', '.avi', '.mkv', '.mov', '.wmv', '.flv', '.webm'],
+        'اسناد': ['.pdf', '.txt', '.rtf', '.md', '.log', '.csv', '.json', '.xml', '.html', '.css', '.js', '.py', '.cpp', '.java', '.php', '.sql'],
+        'آفیس': ['.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx'],
+        'نرم‌افزار': ['.exe', '.msi', '.apk', '.deb', '.dmg'],
+        'فشرده': ['.zip', '.rar', '.7z', '.tar', '.gz', '.iso']
+    }
+
+    def __init__(self, src, dst, delete_source=False):
+        self.src = Path(src)
+        self.dst = Path(dst)
+        self.delete_source = delete_source
+        self.detector = ContentDetector()
+        self.db = DatabaseManager()
+        self.paused = False
+        self.stopped = False
+        self.total_files = 0
+
+    def set_pause(self, paused): self.paused = paused
+    def set_stop(self, stopped): self.stopped = stopped
+
+    def _calculate_hash(self, path):
+        hasher = hashlib.md5()
+        try:
+            with open(path, 'rb') as f:
+                while chunk := f.read(8192):
+                    hasher.update(chunk)
+            return hasher.hexdigest()
+        except:
+            return ""
+
+    def _get_category_by_extension(self, file_path: Path) -> Tuple[str, str]:
+        ext = file_path.suffix.lower()
+        for category, exts in self.EXTENSION_MAP.items():
+            if ext in exts:
+                return (category, "سایر")
+        return ("سایر", "")
+
+    def _get_category(self, file_path: Path) -> Tuple[str, str]:
+        ext = file_path.suffix.lower()
+        if ext in ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.ico', '.raw', '.heic']:
+            return self.detector.detect(str(file_path))
+        return self._get_category_by_extension(file_path)
+
+    def _get_destination_path(self, file_path: Path, category: str, sub_category: str) -> Path:
+        base = self.dst
+        
+        # تصاویر
+        if category in ["انسان", "حیوان", "منظره", "گیاه", "غذا", "ساختمان", "خودرو", "اشیاء", "سایر"]:
+            img_base = base / "تصاویر"
+            if category != "سایر":
+                if sub_category:
+                    return img_base / category / sub_category / file_path.name
+                return img_base / category / file_path.name
+            return img_base / "سایر" / file_path.name
+        
+        # وکتور
+        elif category == "وکتور":
+            sw_map = {'.cdr': 'CorelDRAW', '.ai': 'Illustrator', '.psd': 'Photoshop', '.eps': 'EPS', '.svg': 'SVG'}
+            sw = sw_map.get(file_path.suffix.lower(), "سایر")
+            return base / "وکتور" / sw / file_path.name
+        
+        # معماری
+        elif category == "معماری":
+            sw_map = {'.dwg': 'AutoCAD', '.skp': 'SketchUp', '.rvt': 'Revit'}
+            sw = sw_map.get(file_path.suffix.lower(), "سایر")
+            return base / "معماری" / sw / file_path.name
+        
+        # سه‌بعدی
+        elif category == "سه‌بعدی":
+            sw_map = {'.blend': 'Blender', '.max': '3ds_Max', '.c4d': 'Cinema4D'}
+            sw = sw_map.get(file_path.suffix.lower(), "سایر")
+            return base / "سه‌بعدی" / sw / file_path.name
+        
+        # سایر
+        else:
+            return base / category / file_path.name
+
+    def classify_and_copy(self, progress_callback=None, log_callback=None, pause_check_callback=None) -> Dict:
+        files = list(self.src.rglob('*'))
+        files = [f for f in files if f.is_file()]
+        self.total_files = len(files)
+        stats = {'total': self.total_files, 'processed': 0, 'failed': 0, 'skipped': 0, 'duplicates': 0}
+        hash_map = {}
+
+        for idx, file_path in enumerate(files):
+            if pause_check_callback:
+                while self.paused:
+                    time.sleep(0.5)
+                    if self.stopped:
+                        break
+                if self.stopped:
+                    break
+
+            try:
+                fhash = self._calculate_hash(file_path)
+                if not fhash:
+                    stats['failed'] += 1
+                    continue
+
+                if fhash in hash_map:
+                    stats['duplicates'] += 1
+                    if log_callback:
+                        log_callback(idx+1, self.total_files, f"🔄 تکراری: {file_path.name}", "")
+                    continue
+
+                main_cat, sub_cat = self._get_category(file_path)
+                dest_path = self._get_destination_path(file_path, main_cat, sub_cat)
+
+                if dest_path:
+                    os.makedirs(dest_path.parent, exist_ok=True)
+                    shutil.copy2(file_path, dest_path)
+                    stats['processed'] += 1
+                    hash_map[fhash] = file_path.name
+                    self.db.insert_file({
+                        'source': str(file_path),
+                        'dest': str(dest_path),
+                        'category': main_cat,
+                        'sub_cat': sub_cat,
+                        'metadata': {'file_hash': fhash, 'size': file_path.stat().st_size}
+                    })
+                    if log_callback:
+                        sub_info = f" [{sub_cat}]" if sub_cat else ""
+                        log_callback(idx+1, self.total_files, f"✅ {main_cat}{sub_info} → {file_path.name}", f"📁 {dest_path}")
+                else:
+                    stats['skipped'] += 1
+
+            except Exception as e:
+                stats['failed'] += 1
+                if log_callback:
+                    log_callback(idx+1, self.total_files, f"❌ خطا: {file_path.name}", str(e))
+
+            if progress_callback:
+                progress_callback(idx+1, self.total_files)
+
+        if not self.stopped and self.delete_source:
+            try:
+                shutil.rmtree(self.src)
+                if log_callback:
+                    log_callback(self.total_files, self.total_files, "🗑️ پوشه مبدا حذف شد.", "")
+            except:
+                pass
+
+        return stats
+
+
+# ============================================================
+# کارگر (Thread)
+# ============================================================
+
+class ClassificationWorker(QThread):
+    progress = Signal(int, int)
+    log = Signal(str)
+    finished = Signal(dict)
+
+    def __init__(self, src, dst, delete):
+        super().__init__()
+        self.src = src
+        self.dst = dst
+        self.delete = delete
+        self.paused = False
+        self.stopped = False
+        self.engine = None
+
+    def toggle_pause(self):
+        self.paused = not self.paused
+        if self.engine:
+            self.engine.set_pause(self.paused)
+
+    def stop(self):
+        self.stopped = True
+        if self.engine:
+            self.engine.set_stop(True)
+
+    def run(self):
+        self.engine = ClassificationEngine(self.src, self.dst, self.delete)
+        stats = self.engine.classify_and_copy(
+            progress_callback=lambda c, t: self.progress.emit(c, t),
+            log_callback=lambda c, t, s, d: self.log.emit(s),
+            pause_check_callback=lambda: None
+        )
+        self.finished.emit(stats)
+
+
+# ============================================================
+# پنجره اصلی
+# ============================================================
+
+class MainWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.tr = Translator()
+        self.worker = None
+        self.is_paused = False
+        self.is_stopped = False
+        self.setup_ui()
+        self.apply_theme("gray")
+        self.update_texts()
+
+    def setup_ui(self):
+        self.setWindowTitle("ArchivePro")
+        self.setGeometry(100, 100, 1000, 700)
+
+        # منو
+        menubar = self.menuBar()
+        file_menu = menubar.addMenu("File")
+        exit_action = QAction("Exit", self)
+        exit_action.triggered.connect(self.close)
+        file_menu.addAction(exit_action)
+        help_menu = menubar.addMenu("Help")
+        about_action = QAction("About", self)
+        about_action.triggered.connect(self.show_about)
+        help_menu.addAction(about_action)
+
+        central = QWidget()
+        self.setCentralWidget(central)
+        layout = QVBoxLayout(central)
+        layout.setSpacing(10)
+
+        # نوار بالا (زبان و تم)
+        top = QHBoxLayout()
+        top.addWidget(QLabel("Language:"))
+        self.lang_cb = QComboBox()
+        self.lang_cb.addItems(["فارسی", "English"])
+        self.lang_cb.currentIndexChanged.connect(self.change_lang)
+        top.addWidget(self.lang_cb)
+        top.addSpacing(20)
+        top.addWidget(QLabel("Theme:"))
+        self.theme_cb = QComboBox()
+        self.theme_cb.addItems(["طوسی", "تیره", "آبی", "طبیعت"])
+        self.theme_cb.currentIndexChanged.connect(self.change_theme)
+        top.addWidget(self.theme_cb)
+        top.addStretch()
+        layout.addLayout(top)
+
+        # انتخاب پوشه
+        grid = QGridLayout()
+        self.lbl_source = QLabel("Source:")
+        grid.addWidget(self.lbl_source, 0, 0)
+        self.src_edit = QLineEdit()
+        self.src_edit.setPlaceholderText("Folder containing files")
+        grid.addWidget(self.src_edit, 0, 1)
+        self.src_btn = QPushButton("Browse")
+        self.src_btn.clicked.connect(lambda: self.src_edit.setText(QFileDialog.getExistingDirectory(self, "Select Source")))
+        grid.addWidget(self.src_btn, 0, 2)
+
+        self.lbl_dest = QLabel("Destination:")
+        grid.addWidget(self.lbl_dest, 1, 0)
+        self.dst_edit = QLineEdit()
+        self.dst_edit.setPlaceholderText("Folder for classified files")
+        grid.addWidget(self.dst_edit, 1, 1)
+        self.dst_btn = QPushButton("Browse")
+        self.dst_btn.clicked.connect(lambda: self.dst_edit.setText(QFileDialog.getExistingDirectory(self, "Select Destination")))
+        grid.addWidget(self.dst_btn, 1, 2)
+        layout.addLayout(grid)
+
+        self.del_cb = QCheckBox("🗑️ Delete entire source folder after completion")
+        layout.addWidget(self.del_cb)
+
+        # دکمه‌ها
+        btn_lt = QHBoxLayout()
+        self.start_btn = QPushButton("🚀 Start Classification")
+        self.start_btn.clicked.connect(self.start_classification)
+        btn_lt.addWidget(self.start_btn)
+
+        self.pause_btn = QPushButton("⏸️ Pause")
+        self.pause_btn.setEnabled(False)
+        self.pause_btn.clicked.connect(self.toggle_pause)
+        btn_lt.addWidget(self.pause_btn)
+
+        self.stop_btn = QPushButton("⏹️ Stop")
+        self.stop_btn.setEnabled(False)
+        self.stop_btn.clicked.connect(self.stop_classification)
+        btn_lt.addWidget(self.stop_btn)
+
+        self.report_btn = QPushButton("Generate Report")
+        self.report_btn.setEnabled(False)
+        self.report_btn.clicked.connect(self.generate_report)
+        btn_lt.addWidget(self.report_btn)
+        layout.addLayout(btn_lt)
+
+        # پیشرفت
+        self.progress = QProgressBar()
+        self.progress.setFormat("%p% - %v of %m files")
+        layout.addWidget(self.progress)
+
+        # تب‌ها
+        self.tabs = QTabWidget()
+        layout.addWidget(self.tabs)
+
+        self.log_list = QListWidget()
+        self.tabs.addTab(self.log_list, "📋 Live Log")
+
+        self.report_txt = QTextEdit()
+        self.report_txt.setReadOnly(True)
+        self.tabs.addTab(self.report_txt, "📊 Final Report")
+
+        # وضعیت
+        st_lt = QHBoxLayout()
+        self.status_label = QLabel("✅ Ready")
+        st_lt.addWidget(self.status_label)
+        st_lt.addStretch()
+        self.count_label = QLabel("Files: 0 of 0")
+        st_lt.addWidget(self.count_label)
+        layout.addLayout(st_lt)
+
+        footer = QLabel("👨‍💻 Majid Dehaki")
+        footer.setAlignment(Qt.AlignCenter)
+        footer.setStyleSheet("color: #888; font-size: 11px; padding: 5px;")
+        layout.addWidget(footer)
+
+    def change_lang(self, idx):
+        self.tr.set_lang("fa" if idx == 0 else "en")
+        self.update_texts()
+
+    def change_theme(self, idx):
+        themes = ["gray", "dark", "blue", "nature"]
+        self.apply_theme(themes[idx])
+
+    def apply_theme(self, theme):
+        styles = {
+            "gray": """
+                QMainWindow { background: #e8e8e8; }
+                QLabel { color: #333; }
+                QLineEdit { background: #fff; border: 1px solid #ccc; border-radius: 5px; padding: 6px; }
+                QPushButton { background: #d0d0d0; color: #333; border: none; padding: 8px 20px; border-radius: 5px; }
+                QPushButton:hover { background: #c0c0c0; }
+                QPushButton:disabled { background: #ddd; color: #999; }
+                QListWidget { background: #fff; border: 1px solid #ddd; border-radius: 5px; }
+                QListWidget::item:selected { background: #aaa; color: #fff; }
+                QTabWidget::pane { background: #fff; border: 1px solid #ddd; border-radius: 5px; }
+                QTabBar::tab { background: #ddd; color: #333; padding: 8px 20px; border-radius: 5px 5px 0 0; }
+                QTabBar::tab:selected { background: #aaa; color: #fff; }
+                QProgressBar { background: #fff; border: 1px solid #ddd; border-radius: 5px; height: 22px; }
+                QProgressBar::chunk { background: #888; border-radius: 5px; }
+                QMenuBar { background: #e8e8e8; color: #333; }
+                QTextEdit { background: #fff; border: 1px solid #ddd; border-radius: 5px; }
+            """,
+            "dark": """
+                QMainWindow { background: #1e1e2e; }
+                QLabel { color: #cdd6f4; }
+                QLineEdit { background: #313244; border: 1px solid #45475a; border-radius: 8px; padding: 8px; color: #cdd6f4; }
+                QPushButton { background: #89b4fa; color: #1e1e2e; border: none; padding: 8px 20px; border-radius: 8px; font-weight: bold; }
+                QPushButton:hover { background: #74c7ec; }
+                QPushButton:disabled { background: #45475a; color: #6c7086; }
+                QListWidget { background: #313244; border: none; border-radius: 8px; padding: 8px; color: #cdd6f4; }
+                QListWidget::item:selected { background: #89b4fa; color: #1e1e2e; }
+                QTabWidget::pane { background: #313244; border: none; border-radius: 8px; }
+                QTabBar::tab { background: #45475a; color: #cdd6f4; padding: 8px 20px; border-radius: 6px 6px 0 0; }
+                QTabBar::tab:selected { background: #89b4fa; color: #1e1e2e; }
+                QProgressBar { background: #313244; border: none; border-radius: 6px; height: 22px; }
+                QProgressBar::chunk { background: #89b4fa; border-radius: 6px; }
+                QMenuBar { background: #1e1e2e; color: #cdd6f4; }
+                QTextEdit { background: #313244; border: none; border-radius: 8px; color: #cdd6f4; }
+            """,
+            "blue": """
+                QMainWindow { background: #0d1b2a; }
+                QLabel { color: #d0d8e8; }
+                QLineEdit { background: #1a2a4a; border: 1px solid #2a4a6a; border-radius: 8px; padding: 8px; color: #d0d8e8; }
+                QPushButton { background: #4a8bc2; color: #fff; border: none; padding: 8px 20px; border-radius: 8px; }
+                QPushButton:hover { background: #5a9bd2; }
+                QPushButton:disabled { background: #2a4a6a; color: #888; }
+                QListWidget { background: #1a2a4a; border: none; border-radius: 8px; padding: 8px; color: #d0d8e8; }
+                QListWidget::item:selected { background: #4a8bc2; color: #fff; }
+                QTabWidget::pane { background: #1a2a4a; border: none; border-radius: 8px; }
+                QTabBar::tab { background: #2a4a6a; color: #d0d8e8; padding: 8px 20px; border-radius: 6px 6px 0 0; }
+                QTabBar::tab:selected { background: #4a8bc2; color: #fff; }
+                QProgressBar { background: #1a2a4a; border: none; border-radius: 6px; height: 22px; }
+                QProgressBar::chunk { background: #4a8bc2; border-radius: 6px; }
+                QMenuBar { background: #0d1b2a; color: #d0d8e8; }
+                QTextEdit { background: #1a2a4a; border: none; border-radius: 8px; color: #d0d8e8; }
+            """,
+            "nature": """
+                QMainWindow { background: #1a2a1a; }
+                QLabel { color: #d0e8d0; }
+                QLineEdit { background: #2a3a2a; border: 1px solid #3a5a3a; border-radius: 8px; padding: 8px; color: #d0e8d0; }
+                QPushButton { background: #4caf50; color: #1a2a1a; border: none; padding: 8px 20px; border-radius: 8px; }
+                QPushButton:hover { background: #5cbf60; }
+                QPushButton:disabled { background: #3a5a3a; color: #888; }
+                QListWidget { background: #2a3a2a; border: none; border-radius: 8px; padding: 8px; color: #d0e8d0; }
+                QListWidget::item:selected { background: #4caf50; color: #1a2a1a; }
+                QTabWidget::pane { background: #2a3a2a; border: none; border-radius: 8px; }
+                QTabBar::tab { background: #3a5a3a; color: #d0e8d0; padding: 8px 20px; border-radius: 6px 6px 0 0; }
+                QTabBar::tab:selected { background: #4caf50; color: #1a2a1a; }
+                QProgressBar { background: #2a3a2a; border: none; border-radius: 6px; height: 22px; }
+                QProgressBar::chunk { background: #4caf50; border-radius: 6px; }
+                QMenuBar { background: #1a2a1a; color: #d0e8d0; }
+                QTextEdit { background: #2a3a2a; border: none; border-radius: 8px; color: #d0e8d0; }
+            """
+        }
+        self.setStyleSheet(styles.get(theme, styles["gray"]))
+
+    def update_texts(self):
+        tr = self.tr
+        self.setWindowTitle(tr.tr("app_title"))
+        self.lbl_source.setText(tr.tr("source"))
+        self.lbl_dest.setText(tr.tr("dest"))
+        self.src_edit.setPlaceholderText(tr.tr("source_placeholder"))
+        self.dst_edit.setPlaceholderText(tr.tr("dest_placeholder"))
+        self.src_btn.setText(tr.tr("browse"))
+        self.dst_btn.setText(tr.tr("browse"))
+        self.del_cb.setText(tr.tr("delete"))
+        self.start_btn.setText(tr.tr("start"))
+        self.pause_btn.setText(tr.tr("pause"))
+        self.stop_btn.setText(tr.tr("stop"))
+        self.report_btn.setText(tr.tr("report"))
+        self.progress.setFormat(tr.tr("progress"))
+        self.status_label.setText(tr.tr("ready"))
+        self.tabs.setTabText(0, tr.tr("tab_log"))
+        self.tabs.setTabText(1, tr.tr("tab_report"))
+
+    def show_about(self):
+        QMessageBox.about(self, self.tr.tr("about"), self.tr.tr("about_text"))
+
+    def start_classification(self):
+        src = self.src_edit.text().strip()
+        dst = self.dst_edit.text().strip()
+        if not src or not dst:
+            QMessageBox.warning(self, self.tr.tr("error"), self.tr.tr("error_folders"))
+            return
+        if src == dst:
+            QMessageBox.warning(self, self.tr.tr("error"), self.tr.tr("error_same"))
+            return
+        if self.del_cb.isChecked():
+            if QMessageBox.question(self, self.tr.tr("warning_title"), self.tr.tr("warning_text"), QMessageBox.Yes|QMessageBox.No) == QMessageBox.No:
+                return
+
+        self.start_btn.setEnabled(False)
+        self.pause_btn.setEnabled(True)
+        self.stop_btn.setEnabled(True)
+        self.report_btn.setEnabled(False)
+        self.log_list.clear()
+        self.progress.setValue(0)
+        self.status_label.setText(self.tr.tr("processing"))
+
+        self.worker = ClassificationWorker(src, dst, self.del_cb.isChecked())
+        self.worker.progress.connect(self.update_progress)
+        self.worker.log.connect(self.add_log)
+        self.worker.finished.connect(self.classification_finished)
+        self.worker.start()
+
+    def toggle_pause(self):
+        if self.worker:
+            self.is_paused = not self.is_paused
+            self.worker.toggle_pause()
+            self.pause_btn.setText(self.tr.tr("resume") if self.is_paused else self.tr.tr("pause"))
+            self.status_label.setText(self.tr.tr("paused") if self.is_paused else self.tr.tr("processing"))
+
+    def stop_classification(self):
+        if self.worker:
+            self.is_stopped = True
+            self.worker.stop()
+            self.stop_btn.setEnabled(False)
+            self.status_label.setText("⏹️ Stopping...")
+
+    def update_progress(self, current, total):
+        self.progress.setMaximum(total)
+        self.progress.setValue(current)
+        self.count_label.setText(self.tr.tr("files", current, total))
+
+    def add_log(self, msg):
+        self.log_list.addItem(msg)
+        self.log_list.scrollToBottom()
+
+    def classification_finished(self, stats):
+        self.start_btn.setEnabled(True)
+        self.pause_btn.setEnabled(False)
+        self.stop_btn.setEnabled(False)
+        self.report_btn.setEnabled(True)
+        self.status_label.setText(self.tr.tr("completed"))
+        self.progress.setValue(stats['total'])
+        self.report_txt.setText(f"Total: {stats['total']}\nCopied: {stats['processed']}\nFailed: {stats['failed']}")
+        QMessageBox.information(self, self.tr.tr("info_done"), self.tr.tr("info_text", stats['processed']))
+
+    def generate_report(self):
+        dst = self.dst_edit.text().strip()
+        if not dst:
+            return
+        data = self.db.get_all_files()
+        if not data:
+            return
+        try:
+            import csv
+            with open(os.path.join(dst, "report.csv"), 'w', newline='', encoding='utf-8-sig') as f:
+                writer = csv.writer(f)
+                writer.writerow(["Filename", "Source", "Destination", "Category", "Sub Category"])
+                for row in data:
+                    writer.writerow([
+                        Path(row.get('dest_path', '')).name,
+                        row.get('source_path', ''),
+                        row.get('dest_path', ''),
+                        row.get('category', ''),
+                        row.get('sub_category', '')
+                    ])
+            QMessageBox.information(self, "Report", f"Report saved in {dst}")
+        except Exception as e:
+            QMessageBox.warning(self, "Error", str(e))
+
+
+# ============================================================
+# نقطه‌ی ورود
+# ============================================================
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    app.setStyle("Fusion")
+    win = MainWindow()
+    win.show()
+    sys.exit(app.exec())
