@@ -7,6 +7,7 @@ from pathlib import Path
 import jdatetime
 from PySide6.QtCore import QObject, Signal
 
+from audio_analyzer import AudioAnalyzer
 from database import DatabaseManager
 from file_analyzer import (
     ANDROID_APP_EXTS,
@@ -55,6 +56,7 @@ class ArchiveWorker(QObject):
         use_persian=False,
         delete_after_copy=False,
         reprocess_archived=False,
+        use_gemma=False,
     ):
         super().__init__()
         self.source_dir = Path(source_dir)
@@ -63,6 +65,8 @@ class ArchiveWorker(QObject):
         self.use_persian = use_persian
         self.move_mode = bool(delete_after_copy)
         self.reprocess_archived = bool(reprocess_archived)
+        self.use_gemma = bool(use_gemma)
+        self.gemma_available = False
         self._pause = threading.Event()
         self._pause.set()
         self._stop = threading.Event()
@@ -148,7 +152,7 @@ class ArchiveWorker(QObject):
             return ["تصاویر", "هنر" if subcategory == "هنر" else "تکسچر"]
         return ["تصاویر", "سایر"]
 
-    def _main_folder_for(self, path, ai_hint=None):
+    def _main_folder_for(self, path, ai_hint=None, audio_hint=None):
         ext = path.suffix.lower()
 
         if ext in VECTOR_EXTS:
@@ -203,7 +207,7 @@ class ArchiveWorker(QObject):
             return mapping[ext]
 
         if ext in AUDIO_EXTS:
-            return ["موسیقی", "MIDI" if ext in {".mid", ".midi"} else "سایر"]
+            return AudioAnalyzer.folder_parts(audio_hint or AudioAnalyzer.analyze(path))
         if ext in VIDEO_EXTS:
             return ["ویدئو", "سایر"]
 
@@ -331,11 +335,18 @@ class ArchiveWorker(QObject):
             self.log.emit(f"Duplicate skipped: {path}")
             return self._main_folder_for(path)
 
-        parts = self._main_folder_for(path)
+        audio_hint = AudioAnalyzer.analyze(path) if path.suffix.lower() in AUDIO_EXTS else None
+        parts = self._main_folder_for(path, audio_hint=audio_hint)
         destination = self._dest_path(path, parts)
         self._copy_or_move(path, destination)
-        self.db.insert_file(str(path), str(destination), md5, sha256, metadata["size"], metadata["mtime"], metadata["mime"], {"type": "main", **metadata})
-        self.log.emit(f"Archived main: {path.name} -> {destination}")
+        record_metadata = {"type": "main", **metadata}
+        if audio_hint:
+            record_metadata["audio"] = audio_hint
+        self.db.insert_file(str(path), str(destination), md5, sha256, metadata["size"], metadata["mtime"], metadata["mime"], record_metadata)
+        if audio_hint:
+            self.log.emit(f"Archived audio: {path.name} -> {destination} | {audio_hint.get('kind', 'music')}")
+        else:
+            self.log.emit(f"Archived main: {path.name} -> {destination}")
         return parts
 
     def _archive_preview(self, image_path, main_parts, main_file):
@@ -359,7 +370,10 @@ class ArchiveWorker(QObject):
             self.log.emit(f"Duplicate skipped: {image_path}")
             return
 
-        ai_hint = self.gemma.analyze_image(image_path)
+        if self.use_gemma and self.gemma_available:
+            ai_hint = self.gemma.analyze_image(image_path)
+        else:
+            ai_hint = self.gemma.quick_classify_image(image_path)
         parts = self._main_folder_for(image_path, ai_hint=ai_hint)
         destination = self._dest_path(image_path, parts)
         self._copy_or_move(image_path, destination)
@@ -373,6 +387,17 @@ class ArchiveWorker(QObject):
             self.log.emit(f"Processing mode: {mode}")
             if self.reprocess_archived:
                 self.log.emit("Reprocess mode is enabled: files already in history will be processed again.")
+
+            if self.use_gemma:
+                self.log.emit("Checking Gemma Vision service...")
+                self.gemma_available = self.gemma.is_available()
+                if self.gemma_available:
+                    self.log.emit("Gemma Vision is ready. Image analysis can take time on each image.")
+                else:
+                    self.log.emit("Gemma Vision is unavailable. Fast filename mode will be used without waiting.")
+            else:
+                self.log.emit("Fast image mode is enabled. Gemma Vision will not be used.")
+
             if self.db.legacy_files_table:
                 self.log.emit(f"Old database table preserved as {self.db.legacy_files_table}; a new compatible table was created.")
 

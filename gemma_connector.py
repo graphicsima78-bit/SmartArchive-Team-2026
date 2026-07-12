@@ -65,6 +65,17 @@ class GemmaConnector:
         self.timeout = timeout
         self._lock = threading.Lock()
 
+    def is_available(self) -> bool:
+        """فقط یک بررسی سریع انجام می‌دهد؛ مدل را اجرا یا بارگذاری نمی‌کند."""
+        try:
+            response = requests.get(f"{self.base_url}/api/tags", timeout=3)
+            if not response.ok:
+                return False
+            models = response.json().get("models", [])
+            return any(item.get("name") == self.model for item in models)
+        except Exception:
+            return False
+
     @staticmethod
     def _image_to_base64(image_path: Path) -> str:
         if not image_path.is_file():
@@ -117,6 +128,12 @@ class GemmaConnector:
             "confidence": 0.0,
             "reason": "filename fallback: unknown",
         }
+
+    def quick_classify_image(self, image_path) -> dict:
+        """حالت سریع: بدون درخواست به Ollama و فقط با بررسی نام فایل."""
+        result = self._fallback_by_filename(Path(image_path))
+        result["reason"] = f"Fast mode: {result['reason']}"
+        return result
 
     def analyze_image(self, image_path) -> dict:
         """تصویر را با Gemma Vision تحلیل و نتیجهٔ مناسب ArchiveWorker را برمی‌گرداند."""

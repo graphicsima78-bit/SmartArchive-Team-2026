@@ -88,8 +88,12 @@ class MainWindow(QMainWindow):
         self.reprocess_checkbox = QCheckBox("پردازش دوباره فایل‌های ثبت‌شده")
         self.reprocess_checkbox.setChecked(False)
         self.reprocess_checkbox.setToolTip("برای اجرای دوباره همان فایل‌ها با تنظیماتی مثل تاریخ متفاوت.")
+        self.gemma_checkbox = QCheckBox("تحلیل دقیق تصاویر با Gemma (کندتر)")
+        self.gemma_checkbox.setChecked(False)
+        self.gemma_checkbox.setToolTip("در صورت فعال بودن، هر تصویر با مدل محلی Gemma تحلیل می‌شود و ممکن است زمان‌بر باشد.")
         safety_options.addWidget(self.delete_source_checkbox)
         safety_options.addWidget(self.reprocess_checkbox)
+        safety_options.addWidget(self.gemma_checkbox)
         safety_options.addStretch(1)
         layout.addLayout(safety_options)
 
@@ -168,6 +172,7 @@ class MainWindow(QMainWindow):
             self.persian_radio.isChecked(),
             self.delete_source_checkbox.isChecked(),
             self.reprocess_checkbox.isChecked(),
+            self.gemma_checkbox.isChecked(),
         )
         self.worker.moveToThread(self.worker_thread)
 
