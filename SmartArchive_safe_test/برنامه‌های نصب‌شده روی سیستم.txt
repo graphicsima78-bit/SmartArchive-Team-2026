@@ -1,7 +1,0 @@
-۶. برنامه‌های نصب‌شده روی سیستم
-نام برنامه	نوع نصب	مسیر	وضعیت
-AI File Sorter	فایل نصبی (exe.)	C:\Program Files\AI File Sorter	✅ نصب شده
-Ollama	فایل نصبی	C:\Program Files\Ollama	✅ نصب شده (نسخه ۰.۳۱.۱)
-Python 3.12	فایل نصبی	C:\Program Files\WindowsApps\...	✅ نصب شده
-LM Studio	فایل نصبی	-	❌ نصب نیست
-Microsoft C++ Build Tools	-	-	❌ نصب نیست (برای کامپایل لازم است)
