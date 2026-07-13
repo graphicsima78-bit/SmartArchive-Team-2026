@@ -19,15 +19,12 @@ from PySide6.QtWidgets import (
     QRadioButton,
     QTabWidget,
     QTextEdit,
-    QTreeWidget,
-    QTreeWidgetItem,
     QVBoxLayout,
     QWidget,
 )
 
 from archiver import ArchiveWorker
 from styles import THEMES
-from taxonomy import TaxonomyManager
 
 
 class MainWindow(QMainWindow):
@@ -48,7 +45,6 @@ class MainWindow(QMainWindow):
         self.worker_thread = None
         self.worker = None
         self.tab_config = {}
-        self.taxonomy = TaxonomyManager()
         self._build_ui()
         self.theme_combo.setCurrentText("روشن حرفه‌ای")
         self._apply_theme("روشن حرفه‌ای")
@@ -80,8 +76,6 @@ class MainWindow(QMainWindow):
         root_layout.addWidget(self.tabs, 1)
         for key, (title_text, focus_types, description) in self.CATEGORY_TABS.items():
             self._build_category_tab(key, title_text, focus_types, description)
-        self._build_project_tab()
-        self._build_taxonomy_tab()
         self._build_report_tab()
 
     def _build_category_tab(self, key, title, focus_types, description):
@@ -201,90 +195,6 @@ class MainWindow(QMainWindow):
         layout.addWidget(group)
         options.update({"delete": delete, "reprocess": reprocess, "quarantine": quarantine})
 
-    def _build_project_tab(self):
-        tab = QWidget()
-        layout = QVBoxLayout(tab)
-        layout.addWidget(QLabel("در حالت پروژه، فایل‌ها بین دسته‌های عمومی پخش نمی‌شوند و همه داخل یک پروژه باقی می‌مانند."))
-
-        group = QGroupBox("تعریف پروژه")
-        group_layout = QVBoxLayout(group)
-        source = QLineEdit()
-        destination = QLineEdit()
-        source.setPlaceholderText("پوشه مبدأ پروژه")
-        destination.setPlaceholderText("پوشه مقصد")
-        source_button = QPushButton("انتخاب مبدأ پروژه")
-        destination_button = QPushButton("انتخاب مقصد")
-        source_button.clicked.connect(lambda: self._browse_folder(source, "Select project source folder"))
-        destination_button.clicked.connect(lambda: self._browse_folder(destination, "Select project destination folder"))
-        for label, edit, button in [("مبدأ پروژه", source, source_button), ("مقصد", destination, destination_button)]:
-            row = QHBoxLayout(); row.addWidget(QLabel(label)); row.addWidget(edit, 1); row.addWidget(button); group_layout.addLayout(row)
-
-        project_name = QLineEdit(); project_name.setPlaceholderText("مثال: 1405_ویلای_یزد یا معرفی_کافی‌شاپ")
-        project_type = QComboBox(); project_type.addItem("معماری و سه‌بعدی", "architecture"); project_type.addItem("تولید محتوا", "content")
-        project_year = QLineEdit(str(__import__('datetime').datetime.now().year))
-        platform = QComboBox(); platform.addItems(["Instagram", "YouTube", "TikTok", "Telegram", "Website", "Advertising", "سایر"])
-        content_type = QComboBox(); content_type.addItems(["Reels", "Post", "Story", "Shorts", "Video", "سایر"])
-        for label, widget in [("نام پروژه", project_name), ("نوع پروژه", project_type), ("سال پروژه", project_year), ("پلتفرم", platform), ("نوع محتوا", content_type)]:
-            row = QHBoxLayout(); row.addWidget(QLabel(label)); row.addWidget(widget, 1); group_layout.addLayout(row)
-        layout.addWidget(group)
-
-        options = {"source": source, "destination": destination, "focus": [], "quick": False, "project_name": project_name, "project_type": project_type, "project_year": project_year, "platform": platform, "content_type": content_type}
-        self._add_security_options(layout, options)
-        start = QPushButton("شروع دسته‌بندی پروژه")
-        start.clicked.connect(lambda: self.start_processing("projects"))
-        layout.addWidget(start); layout.addStretch(1)
-        options["start"] = start
-        self.tab_config["projects"] = options
-        self.tabs.addTab(tab, "پروژه‌ها")
-
-    def _build_taxonomy_tab(self):
-        tab = QWidget()
-        layout = QVBoxLayout(tab)
-        layout.addWidget(QLabel("فقط زیرشاخه‌های تعریف‌شده در این بخش به‌صورت خودکار ساخته می‌شوند. این کار از ساخت پوشه‌های بی‌نظم توسط AI جلوگیری می‌کند."))
-        self.taxonomy_tree = QTreeWidget()
-        self.taxonomy_tree.setHeaderLabels(["درخت دسته‌بندی تصاویر"])
-        layout.addWidget(self.taxonomy_tree, 1)
-
-        group = QGroupBox("افزودن قانون فارسی")
-        group_layout = QVBoxLayout(group)
-        self.taxonomy_path_edit = QLineEdit(); self.taxonomy_path_edit.setPlaceholderText("مسیر: 01_تصاویر\\غذا\\فست‌فود\\ساندویچ")
-        self.taxonomy_alias_edit = QLineEdit(); self.taxonomy_alias_edit.setPlaceholderText("نام‌های مشابه: sandwich, ساندویچ, club sandwich")
-        add = QPushButton("افزودن قانون")
-        add.clicked.connect(self._add_taxonomy_rule)
-        group_layout.addWidget(self.taxonomy_path_edit); group_layout.addWidget(self.taxonomy_alias_edit); group_layout.addWidget(add)
-        layout.addWidget(group)
-        self._refresh_taxonomy_tree()
-        self.tabs.addTab(tab, "مدیریت دسته‌بندی‌ها")
-
-    def _refresh_taxonomy_tree(self):
-        self.taxonomy_tree.clear()
-        roots = {}
-        for path in self.taxonomy.tree_paths("images"):
-            parent = None
-            key_parts = []
-            for part in path:
-                key_parts.append(part)
-                key = tuple(key_parts)
-                item = roots.get(key)
-                if item is None:
-                    item = QTreeWidgetItem([part])
-                    roots[key] = item
-                    if parent is None:
-                        self.taxonomy_tree.addTopLevelItem(item)
-                    else:
-                        parent.addChild(item)
-                parent = item
-        self.taxonomy_tree.expandAll()
-
-    def _add_taxonomy_rule(self):
-        try:
-            self.taxonomy.add_rule("images", self.taxonomy_path_edit.text(), self.taxonomy_alias_edit.text())
-            self.taxonomy_path_edit.clear(); self.taxonomy_alias_edit.clear()
-            self._refresh_taxonomy_tree()
-            self._append_log("قانون دسته‌بندی فارسی اضافه شد.")
-        except Exception as error:
-            QMessageBox.warning(self, "قانون دسته‌بندی", str(error))
-
     def _build_report_tab(self):
         self.report_tab = QWidget()
         layout = QVBoxLayout(self.report_tab)
@@ -333,19 +243,6 @@ class MainWindow(QMainWindow):
         config = self.tab_config[tab_key]
         source = config["source"].text().strip()
         destination = config["destination"].text().strip()
-        project_config = None
-        if tab_key == "projects":
-            project_name = config["project_name"].text().strip()
-            if not project_name:
-                QMessageBox.information(self, "پروژه", "لطفاً نام پروژه را وارد کنید.")
-                return
-            project_config = {
-                "name": project_name,
-                "type": config["project_type"].currentData(),
-                "year": config["project_year"].text().strip(),
-                "platform": config["platform"].currentText(),
-                "content_type": config["content_type"].currentText(),
-            }
         if not source or not destination:
             QMessageBox.information(self, "پوشه‌ها", "لطفاً پوشه مبدأ و مقصد را در همین Tab انتخاب کنید.")
             return
@@ -372,24 +269,22 @@ class MainWindow(QMainWindow):
                 self.worker = None
 
         self.progress.setValue(0)
-        tab_title = "پروژه‌ها" if tab_key == "projects" else self.CATEGORY_TABS[tab_key][0]
-        self._append_log(f"Tab فعال: {tab_title}")
+        self._append_log(f"Tab فعال: {self.CATEGORY_TABS[tab_key][0]}")
         self._append_log("تمرکز دقیق: " + (", ".join(config["focus"]) if config["focus"] else "انتقال اولیه"))
         self.worker_thread = QThread(self)
         self.worker = ArchiveWorker(
             source,
             destination,
-            self._option_checked(config.get("date"), False),
-            self._option_checked(config.get("persian"), False),
+            self._option_checked(config["date"], False),
+            self._option_checked(config["persian"], False),
             delete_source,
             config["reprocess"].isChecked(),
-            self._option_checked(config.get("content"), False),
-            self._option_checked(config.get("ocr"), True),
+            self._option_checked(config["content"], False),
+            self._option_checked(config["ocr"], True),
             config["quarantine"].isChecked(),
             config["focus"],
-            self._option_checked(config.get("family"), False),
+            self._option_checked(config["family"], False),
             config["quick"],
-            project_config,
         )
         self.worker.moveToThread(self.worker_thread)
         self.worker_thread.started.connect(self.worker.run)

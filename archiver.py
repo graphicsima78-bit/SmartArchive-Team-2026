@@ -20,7 +20,6 @@ from file_analyzer import (
 )
 from gemma_connector import GemmaConnector
 from photo_analyzer import PhotoAnalyzer
-from taxonomy import TaxonomyManager
 
 
 class ArchiveWorker(QObject):
@@ -44,7 +43,6 @@ class ArchiveWorker(QObject):
         focus_types=None,
         family_location_when_dated=True,
         quick_transfer=False,
-        project_config=None,
     ):
         super().__init__()
         self.source_dir = Path(source_dir)
@@ -57,7 +55,6 @@ class ArchiveWorker(QObject):
         self.quarantine_duplicates = bool(quarantine_duplicates)
         self.focus_types = set(focus_types or [])
         self.quick_transfer = bool(quick_transfer)
-        self.project_config = dict(project_config or {})
         self.family_location_when_dated = bool(family_location_when_dated and use_date)
         self.gemma_available = False
         self._pause = threading.Event()
@@ -66,7 +63,6 @@ class ArchiveWorker(QObject):
         self.db = DatabaseManager()
         self.gemma = GemmaConnector()
         self.fast_image = FastImageAnalyzer(use_ocr=use_ocr)
-        self.taxonomy = TaxonomyManager()
 
     def pause(self):
         self._pause.clear()
@@ -183,14 +179,6 @@ class ArchiveWorker(QObject):
                 return ["01_تصاویر", "اشیاء", subtype], False
             return ["01_تصاویر", "نماگرفت‌ها", "دسته‌بندی نشده"], False
 
-        if category in {"objects", "object"} and str((hint or {}).get("subcategory", "")).lower() == "logo":
-            return ["01_تصاویر", "اشیاء", "لوگو"], False
-
-        taxonomy_terms = f"{path.stem} {(hint or {}).get('taxonomy_terms', '')}"
-        taxonomy_path = self.taxonomy.resolve_image_path(category, taxonomy_terms)
-        if taxonomy_path and category not in {"people", "person", "documents", "document"}:
-            return taxonomy_path, False
-
         if category in {"documents", "document"} and confidence >= 0.5:
             if str(hint.get("subcategory", "")).lower() == "payment":
                 return ["07_اسناد", "پرداختی", self._safe_label(hint.get("recipient"))], False
@@ -252,50 +240,7 @@ class ArchiveWorker(QObject):
         except Exception:
             return False
 
-    def _project_parts(self, path):
-        """Keep all project files inside one explicit project tree instead of global categories."""
-        config = self.project_config
-        project_name = self._safe_label(config.get("name"), "پروژه_بدون_نام")
-        project_type = config.get("type", "architecture")
-        year = self._safe_label(config.get("year"), str(datetime.now().year))
-        ext = path.suffix.lower()
-
-        if project_type == "content":
-            platform = self._safe_label(config.get("platform"), "سایر")
-            content_type = self._safe_label(config.get("content_type"), "سایر")
-            root = ["12_پروژه‌ها", "02_تولید_محتوا", platform, content_type, project_name]
-            lower = path.stem.casefold()
-            if ext in IMAGE_EXTS or ext in VIDEO_EXTS:
-                section = "06_خروجی_نهایی" if any(x in lower for x in ["final", "output", "export", "نهایی", "خروجی"]) else "01_فایل‌های_خام"
-            elif ext in AUDIO_EXTS:
-                section = "02_صوت_و_موسیقی"
-            elif ext in VECTOR_EXTS:
-                section = "03_گرافیک_و_کاور"
-            elif ext in PDF_EXTS or ext in TEXT_EXTS or ext in DATA_EXTS or ext in WEB_EXTS or ext in CODE_EXTS:
-                section = "04_متن_و_کپشن"
-            else:
-                section = "05_فایل_پروژه"
-            return root + [section]
-
-        root = ["12_پروژه‌ها", "01_معماری_و_سه‌بعدی", year, project_name]
-        lower = path.stem.casefold()
-        if ext in {".dwg", ".dxf"}:
-            section = "01_اتوکد"
-        elif ext in THREE_D_EXTS:
-            section = "02_سه‌بعدی"
-        elif ext in IMAGE_EXTS:
-            section = "03_رندرها" if any(x in lower for x in ["render", "preview", "output", "رندر", "خروجی"]) else "04_تصاویر_مرجع"
-        elif ext in VECTOR_EXTS:
-            section = "05_متریال_و_تکسچر"
-        elif ext in PDF_EXTS or ext in TEXT_EXTS or ext in DATA_EXTS:
-            section = "06_اسناد_و_قراردادها"
-        else:
-            section = "07_خروجی_و_سایر"
-        return root + [section]
-
     def _main_folder_for(self, path, audio_hint=None, paired_image=None):
-        if self.project_config:
-            return self._project_parts(path)
         ext = path.suffix.lower()
 
         if ext in VECTOR_EXTS:
@@ -516,7 +461,7 @@ class ArchiveWorker(QObject):
         if float(fast_hint.get("confidence", 0) or 0) >= 0.5:
             return fast_hint
         if self.content_analysis and self.gemma_available and "images" in self.focus_types:
-            return self.gemma.analyze_image_detailed(image_path)
+            return self.gemma.analyze_image(image_path)
         return {"category": "unclassified", "subcategory": "other", "confidence": 0.0, "reason": "Fast mode: moved to unclassified"}
 
     def _archive_image(self, image_path):
@@ -525,12 +470,8 @@ class ArchiveWorker(QObject):
         if self._is_duplicate(sha256):
             self._handle_duplicate(image_path, sha256)
             return
-        if self.project_config:
-            hint = {"reason": "Project mode"}
-            parts, add_date = self._project_parts(image_path), False
-        else:
-            hint = self._classify_image(image_path)
-            parts, add_date = self._image_parts(image_path, hint)
+        hint = self._classify_image(image_path)
+        parts, add_date = self._image_parts(image_path, hint)
         destination = self._dest_path(image_path, parts, add_date=add_date)
         self._copy_or_move(image_path, destination)
         self.db.insert_file(str(image_path), str(destination), md5, sha256, metadata["size"], metadata["mtime"], metadata["mime"], {"type": "image", "analysis": hint, **metadata})
@@ -542,10 +483,7 @@ class ArchiveWorker(QObject):
             mode = "MOVE (source files will be deleted after successful copy)" if self.move_mode else "COPY (source files will be retained)"
             focus = ", ".join(sorted(self.focus_types)) if self.focus_types else "none"
             self.log.emit(f"Processing mode: {mode}")
-            if self.project_config:
-                self.log.emit(f"Project mode: {self.project_config.get('name', 'پروژه_بدون_نام')}")
-            else:
-                self.log.emit("Mode: fast transfer to final category headers" if self.quick_transfer else f"Detailed focus: {focus}")
+            self.log.emit("Mode: fast transfer to final category headers" if self.quick_transfer else f"Detailed focus: {focus}")
             if self.reprocess_archived:
                 self.log.emit("Reprocess mode is enabled: files already in history will be processed again.")
             elif self.quarantine_duplicates:

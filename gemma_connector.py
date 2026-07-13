@@ -1,5 +1,4 @@
 import base64
-import json
 import re
 import threading
 from pathlib import Path
@@ -14,12 +13,6 @@ class GemmaConnector:
         "You are an image classifier. Respond with ONLY ONE WORD from: "
         "person, animal, landscape, plant, food, building, vehicle, object, logo, art, texture, other. "
         "No explanation."
-    )
-    DETAIL_PROMPT = (
-        "Classify this image. Return ONLY JSON with keys category and item. "
-        "category must be one of: person, animal, landscape, plant, food, building, vehicle, object, logo, art, texture, other. "
-        "item is one short English keyword when obvious, such as sandwich, pizza, burger, cake, flower, copper, cloud, flare, background, icon, render, or isometric. "
-        "Use empty item if uncertain."
     )
 
     CATEGORY_DETAILS = {
@@ -189,40 +182,6 @@ class GemmaConnector:
             fallback = self._fallback_by_filename(image_path)
             fallback["reason"] = f"{fallback['reason']} | Gemma error: {type(error).__name__}: {error}"
             return fallback
-
-    def analyze_image_detailed(self, image_path) -> dict:
-        """Slow content analysis used only for images that stayed unclassified after fast checks."""
-        image_path = Path(image_path)
-        try:
-            payload = {
-                "model": self.model,
-                "messages": [
-                    {"role": "system", "content": self.DETAIL_PROMPT},
-                    {"role": "user", "content": "Classify this image.", "images": [self._image_to_base64(image_path)]},
-                ],
-                "stream": False,
-                "options": {"temperature": 0, "num_predict": 80},
-            }
-            with self._lock:
-                response = requests.post(f"{self.base_url}/api/chat", json=payload, timeout=self.timeout)
-            response.raise_for_status()
-            raw = response.json().get("message", {}).get("content", "").strip()
-            match = re.search(r"\{.*?\}", raw, flags=re.DOTALL)
-            data = json.loads(match.group(0) if match else raw)
-            detected = self._extract_category(str(data.get("category", "")))
-            if detected is None:
-                raise ValueError(f"Unrecognized detailed category: {raw}")
-            category, subcategory = self.CATEGORY_DETAILS[detected]
-            item = str(data.get("item", "")).strip()
-            return {
-                "category": category,
-                "subcategory": subcategory,
-                "taxonomy_terms": item,
-                "confidence": 0.9 if detected != "other" else 0.3,
-                "reason": f"Gemma detail: {detected} / {item or 'unknown'}",
-            }
-        except Exception:
-            return self.analyze_image(image_path)
 
     def classify_image(self, image_path: str) -> tuple:
         result = self.analyze_image(image_path)
