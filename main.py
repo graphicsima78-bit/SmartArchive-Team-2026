@@ -44,7 +44,7 @@ class MainWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("ArchivePro Enterprise v18.0 [Ultimate Engine]")
+        self.setWindowTitle("ArchivePro Enterprise v20.0 [Stable & Fast]")
         self.resize(1220, 830)
         self.worker_thread = None
         self.worker = None
@@ -315,7 +315,7 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(self.report_tab, "گزارش")
 
     def _apply_theme(self, theme_name):
-        self.setStyleSheet(THEMES.get(theme_name, THEMES["تیره فولادی"]))
+        self.setStyleSheet(THEMES.get(theme_name, list(THEMES.values())[0]))
 
     @staticmethod
     def _browse_folder(target_edit, dialog_title):
