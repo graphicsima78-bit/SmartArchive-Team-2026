@@ -29,18 +29,19 @@ from styles import THEMES
 
 class MainWindow(QMainWindow):
     CATEGORY_TABS = {
-        "quick": ("انتقال سریع", [], "فایل‌ها سریع منتقل می‌شوند؛ گرافیک و اسناد در پوشه در انتظار می‌مانند."),
-        "audio": ("صوت", ["audio"], "فقط صوت با خواننده، آلبوم، نام آهنگ، پادکست و ضبط بررسی دقیق می‌شود."),
-        "images": ("تصاویر", ["images"], "فقط تصاویر با تاریخ، خانواده، Screenshot، OCR و تحلیل محتوا بررسی می‌شوند."),
-        "graphics": ("گرافیک", ["graphics"], "فقط وکتور و گرافیک با تصویر هم‌نام، بر اساس کاربرد طراحی دسته‌بندی می‌شوند."),
-        "documents": ("اسناد و آفیس", ["documents"], "فقط PDF، کتاب، آفیس، متن و رسیدهای تصویری بررسی دقیق می‌شوند."),
-        "technical": ("فایل‌های فنی", ["architecture", "three_d", "video", "software"], "معماری، سه‌بعدی، ویدئو، نرم‌افزار و فایل‌های فشرده در شاخه‌های تخصصی قرار می‌گیرند."),
+        "quick": ("انتقال سریع", [], "انتقال سریع فایل‌ها؛ گرافیک و اسناد برای تکمیل بعدی در پوشه در انتظار می‌مانند."),
+        "media": ("صوت و تصویر", ["audio", "images"], "صوت و تصویر با جزئیات تخصصی دسته‌بندی می‌شوند."),
+        "graphics": ("گرافیک و وکتور", ["graphics"], "فایل‌های طراحی و تصویر هم‌نامشان بر اساس کاربرد طراحی دسته‌بندی می‌شوند."),
+        "documents": ("اسناد", ["documents"], "PDF، کتاب، متن، آفیس و رسیدهای تصویری در شاخه اسناد بررسی می‌شوند."),
+        "technical": ("معماری و سه‌بعدی", ["architecture", "three_d"], "فایل‌های CAD، معماری و سه‌بعدی در ساختار تخصصی خود قرار می‌گیرند."),
+        "software": ("نرم‌افزار", ["software", "video"], "نرم‌افزارهای ویندوز، موبایل، لینوکس، مک و ویدئو دسته‌بندی می‌شوند."),
+        "archives": ("فایل‌های فشرده", [], "ZIP، RAR، 7ZIP، ISO و بسته‌های فشرده نرم‌افزار دسته‌بندی می‌شوند."),
     }
 
     def __init__(self):
         super().__init__()
         self.setWindowTitle("ArchivePro Enterprise")
-        self.resize(1220, 820)
+        self.resize(1220, 830)
         self.worker_thread = None
         self.worker = None
         self.tab_config = {}
@@ -72,11 +73,8 @@ class MainWindow(QMainWindow):
 
         self.tabs = QTabWidget()
         root_layout.addWidget(self.tabs, 1)
-
         for key, (title_text, focus_types, description) in self.CATEGORY_TABS.items():
             self._build_category_tab(key, title_text, focus_types, description)
-        self._build_images_settings_tab()
-        self._build_safety_tab()
         self._build_report_tab()
 
     def _build_category_tab(self, key, title, focus_types, description):
@@ -98,7 +96,6 @@ class MainWindow(QMainWindow):
         destination_button = QPushButton("انتخاب مقصد")
         source_button.clicked.connect(lambda: self._browse_folder(source_edit, "Select source folder"))
         destination_button.clicked.connect(lambda: self._browse_folder(destination_edit, "Select destination folder"))
-
         for label, edit, button in [("مبدأ", source_edit, source_button), ("مقصد", destination_edit, destination_button)]:
             row = QHBoxLayout()
             row.addWidget(QLabel(label))
@@ -107,104 +104,100 @@ class MainWindow(QMainWindow):
             folder_layout.addLayout(row)
         layout.addWidget(folder_group)
 
-        detail_group = QGroupBox("رفتار این Tab")
-        detail_layout = QVBoxLayout(detail_group)
-        detail_layout.addWidget(QLabel(self._tab_behavior_text(key)))
-        if key == "graphics":
-            detail_layout.addWidget(QLabel("فایل AI/EPS/PSD/SVG/CDR و تصویر هم‌نام کنار هم در پوشهٔ طراحی قرار می‌گیرند."))
-        if key == "audio":
-            detail_layout.addWidget(QLabel("نام سایت و دامنه استفاده نمی‌شود. اگر آلبوم نبود، فایل مستقیم زیر پوشهٔ خواننده قرار می‌گیرد."))
-        layout.addWidget(detail_group)
+        options = {"source": source_edit, "destination": destination_edit, "focus": focus_types}
+        self._add_analysis_options(key, layout, options)
+        self._add_security_options(layout, options)
 
         start = QPushButton(f"شروع {title}")
         start.clicked.connect(lambda: self.start_processing(key))
         layout.addWidget(start)
         layout.addStretch(1)
-        self.tab_config[key] = {
-            "source": source_edit,
-            "destination": destination_edit,
-            "focus": focus_types,
-            "start": start,
-        }
+        options["start"] = start
+        self.tab_config[key] = options
         self.tabs.addTab(tab, title)
 
-    @staticmethod
-    def _tab_behavior_text(key):
-        if key == "quick":
-            return "هیچ تحلیل سنگینی انجام نمی‌شود. گرافیک و اسناد برای تکمیل آینده به پوشهٔ در انتظار منتقل می‌شوند."
-        if key == "audio":
-            return "فقط فایل‌های صوتی با جزئیات دسته‌بندی می‌شوند؛ بقیه فایل‌ها به شاخهٔ اولیهٔ نوع خود می‌روند."
-        if key == "images":
-            return "فقط تصاویر دقیق بررسی می‌شوند؛ تصویر نامشخص در دسته‌بندی نشده می‌ماند تا بعداً تحلیل محتوا شود."
-        if key == "graphics":
-            return "فقط گرافیک‌ها با کاربرد طراحی مانند بک‌گراند، ابر، هاله، لوگو و چرخه رنگ بررسی می‌شوند."
-        if key == "documents":
-            return "فقط اسناد، PDF، کتاب و آفیس دقیق بررسی می‌شوند؛ رسیدهای قابل‌خواندن به پرداختی منتقل می‌شوند."
-        return "فایل‌های معماری، سه‌بعدی، ویدئو، نرم‌افزار و فشرده بر اساس پسوند و محتوای ZIP دسته‌بندی می‌شوند."
-
-    def _build_images_settings_tab(self):
-        tab = QWidget()
-        layout = QVBoxLayout(tab)
-
-        date_group = QGroupBox("تاریخ و عکس خانوادگی")
-        date_layout = QVBoxLayout(date_group)
-        self.date_checkbox = QCheckBox("فعال‌سازی پوشه تاریخ")
-        self.date_checkbox.setChecked(True)
-        self.persian_radio = QRadioButton("تاریخ شمسی")
-        self.gregorian_radio = QRadioButton("تاریخ میلادی")
-        self.gregorian_radio.setChecked(True)
-        calendar_group = QButtonGroup(self)
-        calendar_group.addButton(self.persian_radio)
-        calendar_group.addButton(self.gregorian_radio)
-        self.family_location_checkbox = QCheckBox("عکس خانوادگی: سال سپس مکان")
-        self.family_location_checkbox.setChecked(True)
-        self.family_location_checkbox.setToolTip("مثال: 01_تصاویر\\خانوادگی\\1405\\یزد")
-        date_layout.addWidget(self.date_checkbox)
-        date_layout.addWidget(self.persian_radio)
-        date_layout.addWidget(self.gregorian_radio)
-        date_layout.addWidget(self.family_location_checkbox)
-        self.date_checkbox.toggled.connect(self._date_state_changed)
-        layout.addWidget(date_group)
-
-        ai_group = QGroupBox("تحلیل محتوای تصویر")
-        ai_layout = QVBoxLayout(ai_group)
-        self.content_analysis_checkbox = QCheckBox("تحلیل محتوا برای تصاویر دسته‌بندی‌نشده (کندتر)")
-        self.content_analysis_checkbox.setChecked(False)
-        self.content_analysis_checkbox.setToolTip("ابتدا تحلیل سریع انجام می‌شود؛ فقط تصویرهای نامشخص برای Gemma ارسال می‌شوند.")
-        self.ocr_checkbox = QCheckBox("OCR برای Screenshotها، رسیدها و اسناد تصویری")
-        self.ocr_checkbox.setChecked(True)
-        self.ocr_checkbox.setToolTip("رسید پرداختی در اسناد\\پرداختی قرار می‌گیرد؛ نام گیرنده فقط در صورت خوانده‌شدن ثبت می‌شود.")
-        ai_layout.addWidget(self.content_analysis_checkbox)
-        ai_layout.addWidget(self.ocr_checkbox)
-        layout.addWidget(ai_group)
-        layout.addStretch(1)
-        self.tabs.addTab(tab, "تصاویر و هوش محتوا")
-
-    def _build_safety_tab(self):
-        tab = QWidget()
-        layout = QVBoxLayout(tab)
-        group = QGroupBox("امنیت و مدیریت فایل")
+    def _add_analysis_options(self, key, layout, options):
+        group = QGroupBox("تحلیل و دسته‌بندی")
         group_layout = QVBoxLayout(group)
-        self.delete_source_checkbox = QCheckBox("حذف فایل مبدأ پس از انتقال موفق")
-        self.delete_source_checkbox.setChecked(False)
-        self.delete_source_checkbox.setToolTip("حالت پیش‌فرض کپی امن است و فایل‌های اصلی حفظ می‌شوند.")
-        self.reprocess_checkbox = QCheckBox("پردازش دوباره فایل‌های ثبت‌شده")
-        self.reprocess_checkbox.setChecked(False)
-        self.reprocess_checkbox.setToolTip("برای اجرای دوباره همان فایل‌ها با تنظیمات جدید.")
-        self.quarantine_duplicates_checkbox = QCheckBox("انتقال تکراری‌های دقیق به پوشه 13_تکراری‌ها")
-        self.quarantine_duplicates_checkbox.setChecked(False)
-        self.quarantine_duplicates_checkbox.setToolTip("فقط فایل SHA-256 یکسان منتقل می‌شود؛ حذف دائمی انجام نمی‌شود.")
-        group_layout.addWidget(self.delete_source_checkbox)
-        group_layout.addWidget(self.reprocess_checkbox)
-        group_layout.addWidget(self.quarantine_duplicates_checkbox)
+        options["content"] = None
+        options["ocr"] = None
+        options["date"] = None
+        options["persian"] = None
+        options["family"] = None
+
+        if key == "media":
+            group_layout.addWidget(QLabel("صوت: خواننده، آلبوم و نام آهنگ از Tag یا نام فایل خوانده می‌شود. تصاویر نیز مستقل بررسی می‌شوند."))
+            date = QCheckBox("فعال‌سازی پوشه تاریخ برای عکس خانوادگی")
+            date.setChecked(True)
+            persian = QRadioButton("تاریخ شمسی")
+            gregorian = QRadioButton("تاریخ میلادی")
+            gregorian.setChecked(True)
+            calendar_group = QButtonGroup(self)
+            calendar_group.addButton(persian)
+            calendar_group.addButton(gregorian)
+            family = QCheckBox("عکس خانوادگی: سال سپس مکان")
+            family.setChecked(True)
+            content = QCheckBox("تحلیل محتوا برای تصاویر دسته‌بندی‌نشده (کندتر)")
+            content.setChecked(False)
+            ocr = QCheckBox("OCR برای Screenshotها، رسیدها و اسناد تصویری")
+            ocr.setChecked(True)
+            date.toggled.connect(lambda enabled: self._set_media_date_options(enabled, persian, gregorian, family))
+            for widget in [date, persian, gregorian, family, content, ocr]:
+                group_layout.addWidget(widget)
+            options.update({"date": date, "persian": persian, "family": family, "content": content, "ocr": ocr})
+        elif key == "graphics":
+            group_layout.addWidget(QLabel("اگر AI/EPS/PSD/SVG/CDR با تصویر هم‌نام وجود داشته باشد، تصویر کنار فایل گرافیکی قرار می‌گیرد."))
+            content = QCheckBox("تحلیل محتوا برای گرافیک‌های دسته‌بندی‌نشده (کندتر)")
+            content.setChecked(False)
+            group_layout.addWidget(content)
+            options["content"] = content
+        elif key == "documents":
+            group_layout.addWidget(QLabel("PDF، کتاب، Word، Excel و PowerPoint زیر شاخه 07_اسناد بررسی می‌شوند."))
+            ocr = QCheckBox("OCR برای رسید، فاکتور و Screenshot سند")
+            ocr.setChecked(True)
+            group_layout.addWidget(ocr)
+            options["ocr"] = ocr
+        elif key == "archives":
+            group_layout.addWidget(QLabel("اگر ZIP شامل APK، XAPK یا OBB باشد، بدون ساخت فایل ZIP جدید در بسته‌های فشرده اندروید قرار می‌گیرد."))
+        elif key == "quick":
+            group_layout.addWidget(QLabel("گرافیک و اسناد در 00_در_انتظار_تکمیل_دسته‌بندی می‌مانند تا بعداً فقط همان بخش‌ها را دقیق پردازش کنید."))
+        else:
+            group_layout.addWidget(QLabel(self._tab_detail_text(key)))
         layout.addWidget(group)
-        layout.addStretch(1)
-        self.tabs.addTab(tab, "امنیت")
+
+    @staticmethod
+    def _tab_detail_text(key):
+        if key == "technical":
+            return "DWG، DXF، SKP، RVT، MAX، Blender، Maya، FBX، OBJ و STL به پوشه‌های تخصصی منتقل می‌شوند."
+        if key == "software":
+            return "EXE، MSI، APK، IPA، DEB، RPM، DMG و ویدئو در شاخه‌های مناسب قرار می‌گیرند."
+        return "فایل‌ها بر اساس پسوند و ساختار داخلی خود دسته‌بندی می‌شوند."
+
+    @staticmethod
+    def _set_media_date_options(enabled, persian, gregorian, family):
+        persian.setEnabled(enabled)
+        gregorian.setEnabled(enabled)
+        family.setEnabled(enabled)
+
+    def _add_security_options(self, layout, options):
+        group = QGroupBox("امنیت و مدیریت این دسته")
+        group_layout = QVBoxLayout(group)
+        delete = QCheckBox("حذف فایل مبدأ پس از انتقال موفق")
+        delete.setChecked(False)
+        reprocess = QCheckBox("پردازش دوباره فایل‌های ثبت‌شده")
+        reprocess.setChecked(False)
+        quarantine = QCheckBox("انتقال تکراری‌های دقیق به پوشه 13_تکراری‌ها")
+        quarantine.setChecked(False)
+        group_layout.addWidget(delete)
+        group_layout.addWidget(reprocess)
+        group_layout.addWidget(quarantine)
+        layout.addWidget(group)
+        options.update({"delete": delete, "reprocess": reprocess, "quarantine": quarantine})
 
     def _build_report_tab(self):
         self.report_tab = QWidget()
         layout = QVBoxLayout(self.report_tab)
-        label = QLabel("گزارش اجرا، خطاها، مسیر فایل‌ها و نتیجهٔ هر دسته‌بندی در این بخش نمایش داده می‌شود.")
+        label = QLabel("گزارش اجرا، خطاها، Progress، توقف موقت و توقف در این بخش قرار دارند.")
         label.setWordWrap(True)
         layout.addWidget(label)
         self.progress = QProgressBar()
@@ -229,11 +222,6 @@ class MainWindow(QMainWindow):
     def _apply_theme(self, theme_name):
         self.setStyleSheet(THEMES.get(theme_name, THEMES["تیره فولادی"]))
 
-    def _date_state_changed(self, enabled):
-        self.persian_radio.setEnabled(enabled)
-        self.gregorian_radio.setEnabled(enabled)
-        self.family_location_checkbox.setEnabled(enabled)
-
     @staticmethod
     def _browse_folder(target_edit, dialog_title):
         path = QFileDialog.getExistingDirectory(None, dialog_title)
@@ -246,6 +234,10 @@ class MainWindow(QMainWindow):
     def _thread_is_alive(self):
         return self.worker_thread is not None and shiboken6.isValid(self.worker_thread)
 
+    @staticmethod
+    def _option_checked(option, default=False):
+        return option.isChecked() if option is not None else default
+
     def start_processing(self, tab_key):
         config = self.tab_config[tab_key]
         source = config["source"].text().strip()
@@ -254,7 +246,8 @@ class MainWindow(QMainWindow):
             QMessageBox.information(self, "پوشه‌ها", "لطفاً پوشه مبدأ و مقصد را در همین Tab انتخاب کنید.")
             return
 
-        if self.delete_source_checkbox.isChecked():
+        delete_source = config["delete"].isChecked()
+        if delete_source:
             answer = QMessageBox.warning(
                 self,
                 "حذف فایل مبدأ",
@@ -274,24 +267,22 @@ class MainWindow(QMainWindow):
                 self.worker_thread = None
                 self.worker = None
 
-        focus_types = config["focus"]
         self.progress.setValue(0)
         self._append_log(f"Tab فعال: {self.CATEGORY_TABS[tab_key][0]}")
-        self._append_log("تمرکز دقیق: " + (", ".join(focus_types) if focus_types else "انتقال اولیه"))
-
+        self._append_log("تمرکز دقیق: " + (", ".join(config["focus"]) if config["focus"] else "انتقال اولیه"))
         self.worker_thread = QThread(self)
         self.worker = ArchiveWorker(
             source,
             destination,
-            self.date_checkbox.isChecked(),
-            self.persian_radio.isChecked(),
-            self.delete_source_checkbox.isChecked(),
-            self.reprocess_checkbox.isChecked(),
-            self.content_analysis_checkbox.isChecked(),
-            self.ocr_checkbox.isChecked(),
-            self.quarantine_duplicates_checkbox.isChecked(),
-            focus_types,
-            self.family_location_checkbox.isChecked(),
+            self._option_checked(config["date"], False),
+            self._option_checked(config["persian"], False),
+            delete_source,
+            config["reprocess"].isChecked(),
+            self._option_checked(config["content"], False),
+            self._option_checked(config["ocr"], True),
+            config["quarantine"].isChecked(),
+            config["focus"],
+            self._option_checked(config["family"], False),
         )
         self.worker.moveToThread(self.worker_thread)
         self.worker_thread.started.connect(self.worker.run)
@@ -327,8 +318,8 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def _on_finished(self):
-        for config in self.tab_config.values():
-            config["start"].setEnabled(True)
+        for item in self.tab_config.values():
+            item["start"].setEnabled(True)
         self.pause_button.setEnabled(False)
         self.stop_button.setEnabled(False)
         self.pause_button.setText("توقف موقت")

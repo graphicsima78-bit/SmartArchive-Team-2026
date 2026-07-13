@@ -279,13 +279,13 @@ class ArchiveWorker(QObject):
             return ["06_ویدئو", "سایر"]
 
         if ext in WORD_EXTS:
-            return ["08_آفیس", "Word"] if self._is_focused("documents") else self._pending_document_parts("آفیس", "Word")
+            return ["07_اسناد", "آفیس", "Word"] if self._is_focused("documents") else self._pending_document_parts("آفیس", "Word")
         if ext in EXCEL_EXTS and ext != ".csv":
-            return ["08_آفیس", "Excel"] if self._is_focused("documents") else self._pending_document_parts("آفیس", "Excel")
+            return ["07_اسناد", "آفیس", "Excel"] if self._is_focused("documents") else self._pending_document_parts("آفیس", "Excel")
         if ext in POWERPOINT_EXTS:
-            return ["08_آفیس", "PowerPoint"] if self._is_focused("documents") else self._pending_document_parts("آفیس", "PowerPoint")
+            return ["07_اسناد", "آفیس", "PowerPoint"] if self._is_focused("documents") else self._pending_document_parts("آفیس", "PowerPoint")
         if ext in OPENDOCUMENT_EXTS:
-            return ["08_آفیس", "OpenDocument"] if self._is_focused("documents") else self._pending_document_parts("آفیس", "OpenDocument")
+            return ["07_اسناد", "آفیس", "OpenDocument"] if self._is_focused("documents") else self._pending_document_parts("آفیس", "OpenDocument")
 
         if ext in PDF_EXTS:
             return ["07_اسناد", "PDF"] if self._is_focused("documents") else self._pending_document_parts("PDF_و_کتاب", "PDF")
