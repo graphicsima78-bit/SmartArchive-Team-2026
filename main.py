@@ -33,25 +33,26 @@ from taxonomy import TaxonomyManager
 class MainWindow(QMainWindow):
     CATEGORY_TABS = {
         "quick": ("انتقال سریع", [], "انتقال سریع فایل‌ها؛ گرافیک و اسناد برای تکمیل بعدی در پوشه در انتظار می‌مانند."),
-        "media": ("صوت و تصویر", ["audio", "images"], "صوت و تصویر با جزئیات تخصصی دسته‌بندی می‌شوند."),
+        "av": ("صوت و ویدئو", ["audio", "video"], "فیلم، موزیک و کلیپ‌ها با جزئیات تخصصی دسته‌بندی می‌شوند."),
+        "photos": ("تصاویر و عکس", ["images"], "عکس‌های دوربین، تصاویر دیجیتال و آلبوم‌ها با آنالیز محتوا دسته‌بندی می‌شوند."),
         "graphics": ("گرافیک و وکتور", ["graphics"], "فایل‌های طراحی و تصویر هم‌نامشان بر اساس کاربرد طراحی دسته‌بندی می‌شوند."),
         "documents": ("اسناد", ["documents"], "PDF، کتاب، متن، آفیس و رسیدهای تصویری در شاخه اسناد بررسی می‌شوند."),
         "technical": ("معماری و سه‌بعدی", ["architecture", "three_d"], "فایل‌های CAD، معماری و سه‌بعدی در ساختار تخصصی خود قرار می‌گیرند."),
-        "software": ("نرم‌افزار", ["software", "video"], "نرم‌افزارهای ویندوز، موبایل، لینوکس، مک و ویدئو دسته‌بندی می‌شوند."),
-        "archives": ("فایل‌های فشرده", [], "ZIP، RAR، 7ZIP، ISO و بسته‌های فشرده نرم‌افزار دسته‌بندی می‌شوند."),
+        "software": ("نرم‌افزار", ["software"], "نرم‌افزارهای ویندوز، موبایل، لینوکس و مک دسته‌بندی می‌شوند."),
+        "archives": ("فایل‌های فشرده", ["archives"], "ZIP، RAR، 7ZIP، ISO و بسته‌های فشرده نرم‌افزار دسته‌بندی می‌شوند."),
     }
 
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("ArchivePro Enterprise")
+        self.setWindowTitle("ArchivePro Enterprise v18.0 [Ultimate Engine]")
         self.resize(1220, 830)
         self.worker_thread = None
         self.worker = None
         self.tab_config = {}
         self.taxonomy = TaxonomyManager()
         self._build_ui()
-        self.theme_combo.setCurrentText("روشن حرفه‌ای")
-        self._apply_theme("روشن حرفه‌ای")
+        self.theme_combo.setCurrentText("مدرن تاریک (v18)")
+        self._apply_theme("مدرن تاریک (v18)")
 
     def _build_ui(self):
         root = QWidget()
@@ -66,8 +67,11 @@ class MainWindow(QMainWindow):
         title.setObjectName("TitleLabel")
         subtitle = QLabel("دسته‌بندی هوشمند، مرحله‌ای و امن فایل‌ها")
         subtitle.setObjectName("SubtitleLabel")
-        title_box.addWidget(title)
-        title_box.addWidget(subtitle)
+        # اضافه کردن بخش وضعیت پردازش موازی در هدر
+        self.parallel_status = QLabel("وضعیت: آماده پردازش موازی (Hash-Check Active)")
+        self.parallel_status.setStyleSheet("color: #2ecc71; font-weight: bold; font-size: 10px;")
+        title_box.addWidget(self.parallel_status)
+        
         header.addLayout(title_box, 1)
         header.addWidget(QLabel("تم:"))
         self.theme_combo = QComboBox()
