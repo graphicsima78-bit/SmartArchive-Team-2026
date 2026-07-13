@@ -32,19 +32,18 @@ from taxonomy import TaxonomyManager
 
 class MainWindow(QMainWindow):
     CATEGORY_TABS = {
-        "quick": ("انتقال سریع", [], "انتقال سریع فایل‌ها؛ گرافیک و اسناد برای تکمیل بعدی در پوشه در انتظار می‌مانند."),
-        "av": ("صوت و ویدئو", ["audio", "video"], "فیلم، موزیک و کلیپ‌ها با جزئیات تخصصی دسته‌بندی می‌شوند."),
-        "photos": ("تصاویر و عکس", ["images"], "عکس‌های دوربین، تصاویر دیجیتال و آلبوم‌ها با آنالیز محتوا دسته‌بندی می‌شوند."),
-        "graphics": ("گرافیک و وکتور", ["graphics"], "فایل‌های طراحی و تصویر هم‌نامشان بر اساس کاربرد طراحی دسته‌بندی می‌شوند."),
-        "documents": ("اسناد", ["documents"], "PDF، کتاب، متن، آفیس و رسیدهای تصویری در شاخه اسناد بررسی می‌شوند."),
-        "technical": ("معماری و سه‌بعدی", ["architecture", "three_d"], "فایل‌های CAD، معماری و سه‌بعدی در ساختار تخصصی خود قرار می‌گیرند."),
-        "software": ("نرم‌افزار", ["software"], "نرم‌افزارهای ویندوز، موبایل، لینوکس و مک دسته‌بندی می‌شوند."),
-        "archives": ("فایل‌های فشرده", ["archives"], "ZIP، RAR، 7ZIP، ISO و بسته‌های فشرده نرم‌افزار دسته‌بندی می‌شوند."),
+        "documents": ("اسناد و کتاب", ["documents", "pdf", "ebooks"], "مدیریت فایل‌های متنی، کتاب‌ها و گزارشات."),
+        "photos": ("تصاویر و عکاسی", ["images", "raw_photos"], "آلبوم‌های عکس و فایل‌های خام دوربین."),
+        "creative": ("رسانه و تدوین", ["video", "audio", "video_projects"], "فایل‌های ویدئویی، موزیک و پروژه‌های تدوین."),
+        "design": ("طراحی و فونت", ["graphics", "vectors", "fonts"], "فایل‌های لایه باز، وکتورها و قلم‌ها."),
+        "engineering": ("فنی و مهندسی", ["architecture", "three_d", "engineering"], "نقشه‌های CAD، مدل‌های سه‌بعدی و قطعات."),
+        "development": ("برنامه و داده", ["software", "code", "databases"], "اپلیکیشن‌ها، سورس کدها و بانک‌های اطلاعاتی."),
+        "system": ("سیستم و آرشیو", ["archives", "iso"], "فایل‌های فشرده و ایمیج‌های سیستم."),
     }
 
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("ArchivePro Enterprise v20.0 [Stable & Fast]")
+        self.setWindowTitle("ArchivePro Enterprise v21.0 [Ultimate Taxonomy]")
         self.resize(1220, 830)
         self.worker_thread = None
         self.worker = None
