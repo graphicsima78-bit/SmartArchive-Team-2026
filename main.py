@@ -46,7 +46,8 @@ class MainWindow(QMainWindow):
         self.worker = None
         self.tab_config = {}
         self._build_ui()
-        self._apply_theme("تیره فولادی")
+        self.theme_combo.setCurrentText("روشن حرفه‌ای")
+        self._apply_theme("روشن حرفه‌ای")
 
     def _build_ui(self):
         root = QWidget()
@@ -104,7 +105,7 @@ class MainWindow(QMainWindow):
             folder_layout.addLayout(row)
         layout.addWidget(folder_group)
 
-        options = {"source": source_edit, "destination": destination_edit, "focus": focus_types}
+        options = {"source": source_edit, "destination": destination_edit, "focus": focus_types, "quick": key == "quick"}
         self._add_analysis_options(key, layout, options)
         self._add_security_options(layout, options)
 
@@ -283,6 +284,7 @@ class MainWindow(QMainWindow):
             config["quarantine"].isChecked(),
             config["focus"],
             self._option_checked(config["family"], False),
+            config["quick"],
         )
         self.worker.moveToThread(self.worker_thread)
         self.worker_thread.started.connect(self.worker.run)

@@ -42,6 +42,7 @@ class ArchiveWorker(QObject):
         quarantine_duplicates=False,
         focus_types=None,
         family_location_when_dated=True,
+        quick_transfer=False,
     ):
         super().__init__()
         self.source_dir = Path(source_dir)
@@ -53,6 +54,7 @@ class ArchiveWorker(QObject):
         self.content_analysis = bool(content_analysis)
         self.quarantine_duplicates = bool(quarantine_duplicates)
         self.focus_types = set(focus_types or [])
+        self.quick_transfer = bool(quick_transfer)
         self.family_location_when_dated = bool(family_location_when_dated and use_date)
         self.gemma_available = False
         self._pause = threading.Event()
@@ -243,6 +245,9 @@ class ArchiveWorker(QObject):
 
         if ext in VECTOR_EXTS:
             if not self._is_focused("graphics"):
+                # Fast transfer still puts graphics in their final graphic branch, not in pending.
+                if self.quick_transfer:
+                    return ["02_طراحی_گرافیک", "99_دسته‌بندی_نشده", self._graphic_app(ext)]
                 return self._pending_graphic_parts(ext)
             return self._graphic_folder_from_content(path, paired_image)
 
@@ -279,24 +284,24 @@ class ArchiveWorker(QObject):
             return ["06_ویدئو", "سایر"]
 
         if ext in WORD_EXTS:
-            return ["07_اسناد", "آفیس", "Word"] if self._is_focused("documents") else self._pending_document_parts("آفیس", "Word")
+            return ["07_اسناد", "آفیس", "Word"] if (self._is_focused("documents") or self.quick_transfer) else self._pending_document_parts("آفیس", "Word")
         if ext in EXCEL_EXTS and ext != ".csv":
-            return ["07_اسناد", "آفیس", "Excel"] if self._is_focused("documents") else self._pending_document_parts("آفیس", "Excel")
+            return ["07_اسناد", "آفیس", "Excel"] if (self._is_focused("documents") or self.quick_transfer) else self._pending_document_parts("آفیس", "Excel")
         if ext in POWERPOINT_EXTS:
-            return ["07_اسناد", "آفیس", "PowerPoint"] if self._is_focused("documents") else self._pending_document_parts("آفیس", "PowerPoint")
+            return ["07_اسناد", "آفیس", "PowerPoint"] if (self._is_focused("documents") or self.quick_transfer) else self._pending_document_parts("آفیس", "PowerPoint")
         if ext in OPENDOCUMENT_EXTS:
-            return ["07_اسناد", "آفیس", "OpenDocument"] if self._is_focused("documents") else self._pending_document_parts("آفیس", "OpenDocument")
+            return ["07_اسناد", "آفیس", "OpenDocument"] if (self._is_focused("documents") or self.quick_transfer) else self._pending_document_parts("آفیس", "OpenDocument")
 
         if ext in PDF_EXTS:
-            return ["07_اسناد", "PDF"] if self._is_focused("documents") else self._pending_document_parts("PDF_و_کتاب", "PDF")
+            return ["07_اسناد", "PDF"] if (self._is_focused("documents") or self.quick_transfer) else self._pending_document_parts("PDF_و_کتاب", "PDF")
         if ext in TEXT_EXTS:
-            return ["07_اسناد", "متنی"] if self._is_focused("documents") else self._pending_document_parts("متنی", "متنی")
+            return ["07_اسناد", "متنی"] if (self._is_focused("documents") or self.quick_transfer) else self._pending_document_parts("متنی", "متنی")
         if ext in DATA_EXTS:
-            return ["07_اسناد", "داده"] if self._is_focused("documents") else self._pending_document_parts("داده", "داده")
+            return ["07_اسناد", "داده"] if (self._is_focused("documents") or self.quick_transfer) else self._pending_document_parts("داده", "داده")
         if ext in WEB_EXTS:
-            return ["07_اسناد", "وب"] if self._is_focused("documents") else self._pending_document_parts("کد", "وب")
+            return ["07_اسناد", "وب"] if (self._is_focused("documents") or self.quick_transfer) else self._pending_document_parts("کد", "وب")
         if ext in CODE_EXTS:
-            return ["07_اسناد", "کد"] if self._is_focused("documents") else self._pending_document_parts("کد", "کد")
+            return ["07_اسناد", "کد"] if (self._is_focused("documents") or self.quick_transfer) else self._pending_document_parts("کد", "کد")
 
         if ext in ZIP_EXTS:
             if self._zip_is_android_package(path):
@@ -476,9 +481,9 @@ class ArchiveWorker(QObject):
         try:
             self._validate_paths()
             mode = "MOVE (source files will be deleted after successful copy)" if self.move_mode else "COPY (source files will be retained)"
-            focus = ", ".join(sorted(self.focus_types)) if self.focus_types else "none (initial transfer)"
+            focus = ", ".join(sorted(self.focus_types)) if self.focus_types else "none"
             self.log.emit(f"Processing mode: {mode}")
-            self.log.emit(f"Detailed focus: {focus}")
+            self.log.emit("Mode: fast transfer to final category headers" if self.quick_transfer else f"Detailed focus: {focus}")
             if self.reprocess_archived:
                 self.log.emit("Reprocess mode is enabled: files already in history will be processed again.")
             elif self.quarantine_duplicates:
