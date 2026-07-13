@@ -43,15 +43,15 @@ class MainWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("ArchivePro Enterprise v21.0 [Ultimate Taxonomy]")
-        self.resize(1220, 830)
+        self.setWindowTitle("ArchivePro Studio v22.0")
+        self.resize(1280, 850)
         self.worker_thread = None
         self.worker = None
         self.tab_config = {}
         self.taxonomy = TaxonomyManager()
         self._build_ui()
-        self.theme_combo.setCurrentText("مدرن تاریک (v18)")
-        self._apply_theme("مدرن تاریک (v18)")
+        self.theme_combo.setCurrentText("Studio Dark (Official)")
+        self._apply_theme("Studio Dark (Official)")
 
     def _build_ui(self):
         root = QWidget()

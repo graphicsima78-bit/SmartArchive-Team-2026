@@ -1,112 +1,132 @@
-def _theme(background, panel, field, border, primary, hover, text, muted, accent):
+def _theme(bg, panel, field, border, primary, hover, text, muted, accent):
     return f"""
+    /* Global Styles */
     QWidget {{
-        background-color: {background};
+        background-color: {bg};
         color: {text};
-        font-family: 'Segoe UI', Tahoma, sans-serif;
+        font-family: 'Segoe UI', 'Roboto', 'Tahoma', sans-serif;
         font-size: 13px;
     }}
-    QMainWindow {{ background-color: {background}; }}
     
+    QMainWindow {{
+        background-color: {bg};
+    }}
+
+    /* Header Styling */
     QLabel#TitleLabel {{
-        font-size: 28px;
+        font-size: 32px;
         font-weight: 900;
-        color: {accent};
-        padding: 5px;
+        color: white;
+        letter-spacing: 1px;
+        background: transparent;
     }}
     
     QLabel#SubtitleLabel {{
-        color: {muted};
-        font-size: 14px;
-        padding-bottom: 10px;
+        color: {accent};
+        font-size: 13px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 2px;
     }}
 
-    QLineEdit, QTextEdit, QComboBox {{
-        background-color: {field};
-        border: 2px solid {border};
-        border-radius: 10px;
-        padding: 10px;
+    /* Professional Sidebar-style Tabs */
+    QTabWidget::pane {{
+        border: 1px solid {border};
+        border-radius: 20px;
+        background-color: {panel};
+        margin-top: 10px;
+    }}
+
+    QTabBar::tab {{
+        background: transparent;
+        color: {muted};
+        padding: 12px 30px;
+        margin: 5px;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 14px;
+    }}
+
+    QTabBar::tab:hover {{
+        background: {field};
         color: {text};
+    }}
+
+    QTabBar::tab:selected {{
+        background: {primary};
+        color: white;
+        border-bottom: 2px solid {accent};
+    }}
+
+    /* Cards / Groups */
+    QGroupBox {{
+        background-color: {field};
+        border: 1px solid {border};
+        border-radius: 15px;
+        margin-top: 25px;
+        padding-top: 20px;
+        font-weight: bold;
+    }}
+    
+    QGroupBox::title {{
+        subcontrol-origin: margin;
+        subcontrol-position: top center;
+        padding: 5px 15px;
+        background-color: {accent};
+        color: {bg};
+        border-radius: 10px;
+        top: -10px;
+    }}
+
+    /* Inputs */
+    QLineEdit, QComboBox, QTextEdit {{
+        background-color: {bg};
+        border: 1px solid {border};
+        border-radius: 10px;
+        padding: 12px;
+        color: white;
     }}
     
     QLineEdit:focus {{
         border: 2px solid {accent};
     }}
 
+    /* High-End Buttons */
     QPushButton {{
         background-color: {primary};
         color: white;
-        border: none;
-        border-radius: 10px;
-        padding: 12px 20px;
-        font-weight: bold;
+        border-radius: 12px;
+        padding: 15px 25px;
+        font-weight: 800;
         font-size: 14px;
+        border: 1px solid {accent};
     }}
     
     QPushButton:hover {{
         background-color: {hover};
-        margin-top: -2px;
-    }}
-    
-    QPushButton:pressed {{
-        background-color: {accent};
-        margin-top: 0px;
+        border: 1px solid white;
     }}
 
+    QPushButton#ActionBtn {{
+        background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 {primary}, stop:1 {accent});
+    }}
+
+    /* Progress Bar */
     QProgressBar {{
-        border: none;
-        border-radius: 12px;
+        border: 1px solid {border};
+        border-radius: 10px;
         text-align: center;
-        background: {field};
-        height: 24px;
-        font-weight: bold;
+        background-color: {bg};
+        height: 10px;
     }}
     
     QProgressBar::chunk {{
-        background-color: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:0, stop:0 {accent}, stop:1 {hover});
-        border-radius: 12px;
-    }}
-
-    QGroupBox {{
-        background-color: {panel};
-        border: 2px solid {border};
-        border-radius: 15px;
-        margin-top: 20px;
-        padding: 20px 10px 10px 10px;
-        font-weight: bold;
-    }}
-
-    QTabWidget::pane {{
-        border: 1px solid {border};
-        border-radius: 15px;
-        background: {panel};
-        top: -1px;
-    }}
-
-    QTabBar::tab {{
-        background: {field};
-        border: 1px solid {border};
-        padding: 12px 25px;
-        margin: 2px;
-        border-top-left-radius: 10px;
-        border-top-right-radius: 10px;
-        min-width: 100px;
-    }}
-
-    QTabBar::tab:selected {{
-        background: {primary};
-        color: white;
-        border-bottom: 3px solid {accent};
-    }}
-
-    QTabBar::tab:hover {{
-        background: {hover};
-        color: white;
+        background-color: {accent};
+        border-radius: 10px;
     }}
     """
 
 THEMES = {
-    "مدرن تاریک (v18)": _theme("#1a1a1a", "#242424", "#2d2d2d", "#3d3d3d", "#0078d4", "#2b88d8", "#ffffff", "#aaaaaa", "#00a2ff"),
-    "طلایی لوکس": _theme("#121212", "#1e1e1e", "#252525", "#333333", "#c5a059", "#d4b477", "#ffffff", "#888888", "#ffd700"),
-    "روشن حرفه‌ای": _theme("#f5f7fa", "#ffffff", "#eff3f8", "#d1d9e6", "#3b6f98", "#4e87b5", "#172432", "#627384", "#4c91c8"),
+    "Studio Dark (Official)": _theme("#0a0a0a", "#121212", "#1e1e1e", "#2a2a2a", "#325cff", "#4d74ff", "#e0e0e0", "#888888", "#00d4ff"),
+    "Titanium Light": _theme("#f0f2f5", "#ffffff", "#f8f9fa", "#d1d9e6", "#2c3e50", "#34495e", "#1a1a1a", "#7f8c8d", "#3498db"),
 }
