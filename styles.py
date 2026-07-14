@@ -1,112 +1,81 @@
-def _theme(background, panel, field, border, primary, hover, text, muted, accent):
+def _theme(bg, panel, field, border, primary, hover, text, muted, accent):
     return f"""
     QWidget {{
-        background-color: {background};
+        background-color: {bg};
         color: {text};
         font-family: 'Segoe UI', Tahoma, sans-serif;
-        font-size: 13px;
+        font-size: 12px;
     }}
-    QMainWindow {{ background-color: {background}; }}
     
+    QMainWindow {{ background-color: {bg}; }}
+
+    QLabel {{ color: {text}; }}
     QLabel#TitleLabel {{
-        font-size: 28px;
-        font-weight: 900;
+        font-size: 20px;
+        font-weight: bold;
         color: {accent};
-        padding: 5px;
     }}
     
     QLabel#SubtitleLabel {{
         color: {muted};
-        font-size: 14px;
-        padding-bottom: 10px;
+        font-size: 11px;
     }}
 
-    QLineEdit, QTextEdit, QComboBox {{
+    /* Inputs with dynamic text color */
+    QLineEdit, QComboBox, QTextEdit, QPlainTextEdit {{
         background-color: {field};
-        border: 2px solid {border};
-        border-radius: 10px;
-        padding: 10px;
+        border: 1px solid {border};
+        border-radius: 5px;
+        padding: 6px;
         color: {text};
-    }}
-    
-    QLineEdit:focus {{
-        border: 2px solid {accent};
     }}
 
     QPushButton {{
         background-color: {primary};
-        color: white;
+        color: white; /* Buttons usually keep white text for contrast */
         border: none;
-        border-radius: 10px;
-        padding: 12px 20px;
-        font-weight: bold;
-        font-size: 14px;
+        border-radius: 5px;
+        padding: 8px 15px;
+        font-weight: 600;
     }}
     
-    QPushButton:hover {{
-        background-color: {hover};
-        margin-top: -2px;
-    }}
-    
-    QPushButton:pressed {{
-        background-color: {accent};
-        margin-top: 0px;
-    }}
-
-    QProgressBar {{
-        border: none;
-        border-radius: 12px;
-        text-align: center;
-        background: {field};
-        height: 24px;
-        font-weight: bold;
-    }}
-    
-    QProgressBar::chunk {{
-        background-color: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:0, stop:0 {accent}, stop:1 {hover});
-        border-radius: 12px;
-    }}
-
-    QGroupBox {{
-        background-color: {panel};
-        border: 2px solid {border};
-        border-radius: 15px;
-        margin-top: 20px;
-        padding: 20px 10px 10px 10px;
-        font-weight: bold;
-    }}
+    QPushButton:hover {{ background-color: {hover}; }}
 
     QTabWidget::pane {{
         border: 1px solid {border};
-        border-radius: 15px;
         background: {panel};
-        top: -1px;
     }}
 
     QTabBar::tab {{
         background: {field};
         border: 1px solid {border};
-        padding: 12px 25px;
-        margin: 2px;
-        border-top-left-radius: 10px;
-        border-top-right-radius: 10px;
-        min-width: 100px;
+        color: {text};
+        padding: 8px 20px;
+        margin-right: 2px;
     }}
 
     QTabBar::tab:selected {{
         background: {primary};
         color: white;
-        border-bottom: 3px solid {accent};
+        border-bottom: 2px solid {accent};
     }}
 
-    QTabBar::tab:hover {{
-        background: {hover};
-        color: white;
+    QGroupBox {{
+        background-color: {panel};
+        border: 1px solid {border};
+        border-radius: 8px;
+        margin-top: 15px;
+        padding-top: 20px;
+        font-weight: bold;
+        color: {accent};
+    }}
+
+    QCheckBox, QRadioButton {{
+        color: {text};
     }}
     """
 
 THEMES = {
-    "مدرن تاریک (v18)": _theme("#1a1a1a", "#242424", "#2d2d2d", "#3d3d3d", "#0078d4", "#2b88d8", "#ffffff", "#aaaaaa", "#00a2ff"),
-    "طلایی لوکس": _theme("#121212", "#1e1e1e", "#252525", "#333333", "#c5a059", "#d4b477", "#ffffff", "#888888", "#ffd700"),
-    "روشن حرفه‌ای": _theme("#f5f7fa", "#ffffff", "#eff3f8", "#d1d9e6", "#3b6f98", "#4e87b5", "#172432", "#627384", "#4c91c8"),
+    "Studio Dark (Default)": _theme("#1a1a1a", "#242424", "#2d2d2d", "#3d3d3d", "#0078d4", "#2b88d8", "#ffffff", "#aaaaaa", "#00a2ff"),
+    "Professional Light": _theme("#f5f7fa", "#ffffff", "#eff3f8", "#d1d9e6", "#3b6f98", "#4e87b5", "#172432", "#627384", "#4c91c8"),
 }
