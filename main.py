@@ -153,15 +153,23 @@ class MainWindow(QMainWindow):
         self.log_box.append(f"[{datetime.now().strftime('%H:%M:%S')}] {text}")
 
     def _on_finished(self):
+        self._append_log("--- فرآیند با موفقیت به پایان رسید ---")
         self.global_progress.setValue(100)
         self.stop_btn.setEnabled(False)
-        QMessageBox.information(self, "اتمام کار", "عملیات با موفقیت به پایان رسید.")
-        self.global_progress.setValue(0)
-        if self.worker_thread: self.worker_thread.quit()
-        self.worker = None; self.worker_thread = None
+        # Safe cleanup to avoid "Finish Error"
+        if self.worker_thread:
+            self.worker_thread.quit()
+            self.worker_thread.wait(1000) # Wait up to 1 second
+        self.worker = None
+        self.worker_thread = None
 
     def stop_processing(self):
-        if self.worker: self.worker.stop(); self._append_log("توقف درخواستی...")
+        if self.worker: 
+            self.worker.stop()
+            self._append_log("توقف درخواستی...")
+        if self.worker_thread:
+            self.worker_thread.quit()
+            self.worker_thread.wait(500)
 
     def start_processing(self, key):
         c = self.tab_config[key]
