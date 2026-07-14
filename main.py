@@ -32,18 +32,18 @@ from taxonomy import TaxonomyManager
 
 class MainWindow(QMainWindow):
     CATEGORY_TABS = {
-        "documents": ("اسناد و کتاب", ["documents", "pdf", "ebooks"], "مدیریت فایل‌های متنی، کتاب‌ها و گزارشات."),
-        "photos": ("تصاویر و عکاسی", ["images", "raw_photos"], "آلبوم‌های عکس و فایل‌های خام دوربین."),
-        "creative": ("رسانه و تدوین", ["video", "audio", "video_projects"], "فایل‌های ویدئویی، موزیک و پروژه‌های تدوین."),
-        "design": ("طراحی و فونت", ["graphics", "vectors", "fonts"], "فایل‌های لایه باز، وکتورها و قلم‌ها."),
-        "engineering": ("فنی و مهندسی", ["architecture", "three_d", "engineering"], "نقشه‌های CAD، مدل‌های سه‌بعدی و قطعات."),
-        "development": ("برنامه و داده", ["software", "code", "databases"], "اپلیکیشن‌ها، سورس کدها و بانک‌های اطلاعاتی."),
-        "system": ("سیستم و آرشیو", ["archives", "iso"], "فایل‌های فشرده و ایمیج‌های سیستم."),
+        "all": ("بایگانی هوشمند کلی", [], "بایگانی تمام فایل‌ها به صورت خودکار در شاخه‌های مربوطه (تصاویر، اسناد، ویدئو و...)."),
+        "creator": ("تولید محتوا (Reels/Cover)", ["creator"], "تمرکز بر ابزارهای طراحی ریلز، کاور و فتوشاپ."),
+        "photos": ("تصاویر و عکاسی", ["images"], "دسته‌بندی دقیق عکس‌ها (انسان، طبیعت، اشیاء)."),
+        "design": ("وکتور و طراحی", ["graphics"], "مدیریت فایل‌های لایه باز، آیکون‌ها و پترن‌ها."),
+        "documents": ("اسناد و آموزش", ["documents"], "مرتب‌سازی فایل‌های آفیس، PDF و کتاب‌ها."),
+        "engineering": ("فنی و مهندسی", ["architecture", "three_d"], "فایل‌های CAD و مدل‌های سه‌بعدی."),
+        "system": ("آرشیو و نرم‌افزار", ["archives"], "فایل‌های فشرده و برنامه‌های نصب."),
     }
 
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("ArchivePro Studio v34.0 [Content Creator Edition]")
+        self.setWindowTitle("ArchivePro Studio v35.0 [Core Restoration]")
         self.resize(1000, 700)
         self.worker_thread = None
         self.worker = None

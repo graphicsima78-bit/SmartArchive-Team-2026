@@ -9,11 +9,11 @@ def _theme(bg, panel, field, border, primary, hover, text, muted, accent):
     
     QMainWindow {{ background-color: {bg}; }}
 
+    QLabel {{ color: {text}; }}
     QLabel#TitleLabel {{
-        font-size: 18px;
+        font-size: 20px;
         font-weight: bold;
         color: {accent};
-        padding: 2px;
     }}
     
     QLabel#SubtitleLabel {{
@@ -21,58 +21,37 @@ def _theme(bg, panel, field, border, primary, hover, text, muted, accent):
         font-size: 11px;
     }}
 
-    QLineEdit, QComboBox, QTextEdit {{
+    /* Inputs with dynamic text color */
+    QLineEdit, QComboBox, QTextEdit, QPlainTextEdit {{
         background-color: {field};
         border: 1px solid {border};
-        border-radius: 4px;
-        padding: 5px;
-        color: white;
+        border-radius: 5px;
+        padding: 6px;
+        color: {text};
     }}
 
     QPushButton {{
         background-color: {primary};
-        color: white;
+        color: white; /* Buttons usually keep white text for contrast */
         border: none;
-        border-radius: 4px;
-        padding: 6px 12px;
+        border-radius: 5px;
+        padding: 8px 15px;
         font-weight: 600;
     }}
     
     QPushButton:hover {{ background-color: {hover}; }}
 
-    QProgressBar {{
-        border: 1px solid {border};
-        border-radius: 5px;
-        text-align: center;
-        background-color: {bg};
-        height: 12px;
-        font-size: 10px;
-    }}
-    
-    QProgressBar::chunk {{ background-color: {accent}; border-radius: 4px; }}
-
-    QGroupBox {{
-        background-color: {panel};
-        border: 1px solid {border};
-        border-radius: 6px;
-        margin-top: 10px;
-        padding-top: 15px;
-        font-weight: bold;
-        font-size: 11px;
-    }}
-
     QTabWidget::pane {{
         border: 1px solid {border};
-        border-radius: 0px;
         background: {panel};
     }}
 
     QTabBar::tab {{
         background: {field};
         border: 1px solid {border};
-        padding: 6px 15px;
-        margin-right: 1px;
-        font-size: 11px;
+        color: {text};
+        padding: 8px 20px;
+        margin-right: 2px;
     }}
 
     QTabBar::tab:selected {{
@@ -80,9 +59,23 @@ def _theme(bg, panel, field, border, primary, hover, text, muted, accent):
         color: white;
         border-bottom: 2px solid {accent};
     }}
+
+    QGroupBox {{
+        background-color: {panel};
+        border: 1px solid {border};
+        border-radius: 8px;
+        margin-top: 15px;
+        padding-top: 20px;
+        font-weight: bold;
+        color: {accent};
+    }}
+
+    QCheckBox, QRadioButton {{
+        color: {text};
+    }}
     """
 
 THEMES = {
-    "Compact Dark (v27)": _theme("#121212", "#1e1e1e", "#252525", "#333333", "#005a9e", "#0078d4", "#e0e0e0", "#888888", "#00a2ff"),
-    "Studio Light": _theme("#f5f5f5", "#ffffff", "#eeeeee", "#cccccc", "#005a9e", "#0078d4", "#333333", "#666666", "#0078d4"),
+    "Studio Dark (Default)": _theme("#1a1a1a", "#242424", "#2d2d2d", "#3d3d3d", "#0078d4", "#2b88d8", "#ffffff", "#aaaaaa", "#00a2ff"),
+    "Professional Light": _theme("#f5f7fa", "#ffffff", "#eff3f8", "#d1d9e6", "#3b6f98", "#4e87b5", "#172432", "#627384", "#4c91c8"),
 }
