@@ -22,57 +22,55 @@ class ArchiveWorker(QObject):
         return n.lower().replace(" ", "").replace("_", "").replace("-", "").replace("ي", "ی").replace("ك", "ک")
 
     def _find_smart_folder(self, parent, target):
+        """هوشمندترین متد برای پیدا کردن پوشه‌های از قبل موجود"""
         if not parent.exists(): return None
-        
-        # 1. اول شباهت مستقیم را چک کن
         target_norm = self._normalize(target)
         try:
             entries = list(os.scandir(parent))
+            # 1. چک کردن شباهت اسمی مستقیم
             for entry in entries:
                 if entry.is_dir() and self._normalize(entry.name) == target_norm:
                     return entry.name
             
-            # 2. اگر خواننده است، تمام واریانت‌های فارسی/انگلیسی را چک کن
-            variants = AudioAnalyzer.get_variants(target)
-            if len(variants) > 1:
-                variant_norms = [self._normalize(v) for v in variants]
+            # 2. چک کردن نام‌های جایگزین (خواننده‌ها)
+            variants = AudioAnalyzer.get_all_names_for(target)
+            if variants:
+                var_norms = [self._normalize(v) for v in variants]
                 for entry in entries:
-                    if entry.is_dir() and self._normalize(entry.name) in variant_norms:
+                    if entry.is_dir() and self._normalize(entry.name) in var_norms:
                         return entry.name
         except: pass
         return None
 
     def _get_path(self, parts):
         curr = self.dest_dir
-        res = []
         for p in parts:
             existing = self._find_smart_folder(curr, p)
             name = existing if existing else p
             curr = curr / name
-            res.append(name)
         return curr
 
     def _get_info(self, path):
         ext = path.suffix.lower()
         name = path.stem.lower()
         
-        # Priority 1: Graphics
+        # Priority: Graphics
         if ext == ".psd": return ["تصاویر", "لایه_باز", "Photoshop"], path.name
         if ext == ".cdr": return ["گرافیک_وکتور", "CorelDRAW"], path.name
-        if ext in {'.ai', '.eps', '.svg'}: return ["گرافیک_وکتور", "Vector_Assets"], path.name
-
-        # Priority 2: Audio
+        
+        # Priority: Audio
         if ext in {'.mp3', '.wav', '.flac', '.m4a'}:
             meta = AudioAnalyzer.analyze(path)
             parts = AudioAnalyzer.folder_parts(meta, self.audio_pref)
+            # Normalize root folder name
             if parts[0] == "موسیقی": parts[0] = "موسیقی_و_صوت"
             new_name = AudioAnalyzer.destination_filename(path, meta, self.audio_pref)
             return parts, new_name
 
-        # Priority 3: Architecture
+        # Priority: Architecture
         if ext in {'.jpg', '.png', '.dwg', '.obj'}:
-            if any(x in name for x in ["plaster", "گچبری", "ستون"]): return ["معماری", "ساختمانی"], path.name
-            if any(x in name for x in ["curtain", "پرده", "لوستر", "lamp"]): return ["معماری", "تجهیزات"], path.name
+            if any(x in name for x in ["plaster", "گچبری", "molding", "ستون"]): return ["معماری", "ساختمانی"], path.name
+            if any(x in name for x in ["curtain", "پرده", "chandelier", "لوستر", "lamp"]): return ["معماری", "تجهیزات"], path.name
 
         if ext in {'.jpg', '.png'}: return ["تصاویر", "سایر"], path.name
         if ext in {'.zip', '.rar', '.7z'}: return ["بایگانی_و_فشرده"], path.name
@@ -97,7 +95,7 @@ class ArchiveWorker(QObject):
                     
                     shutil.copy2(path, dest)
                     if self.move_mode: os.remove(path)
-                    self.log.emit(f"بایگانی شد: {new_name}")
+                    self.log.emit(f"بایگانی در {target_dir.name}: {new_name}")
                 except Exception as e: self.log.emit(f"خطا: {e}")
                 self.progress.emit(int((i+1)*100/total))
         finally: self.finished.emit()
