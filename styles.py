@@ -1,55 +1,57 @@
 def _theme(bg, panel, field, border, primary, hover, text, muted, accent):
     return f"""
-    /* Global Styles */
     QWidget {{
         background-color: {bg};
         color: {text};
-        font-family: 'Segoe UI', 'Roboto', 'Tahoma', sans-serif;
-        font-size: 13px;
+        font-family: 'Segoe UI', Tahoma, sans-serif;
+        font-size: 12px;
     }}
     
-    QMainWindow {{
-        background-color: {bg};
-    }}
+    QMainWindow {{ background-color: {bg}; }}
 
-    /* Header Styling */
+    QLabel {{ color: {text}; }}
     QLabel#TitleLabel {{
-        font-size: 32px;
-        font-weight: 900;
-        color: white;
-        letter-spacing: 1px;
-        background: transparent;
+        font-size: 20px;
+        font-weight: bold;
+        color: {accent};
     }}
     
     QLabel#SubtitleLabel {{
-        color: {accent};
-        font-size: 13px;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 2px;
+        color: {muted};
+        font-size: 11px;
     }}
 
-    /* Professional Sidebar-style Tabs */
+    /* Inputs with dynamic text color */
+    QLineEdit, QComboBox, QTextEdit, QPlainTextEdit {{
+        background-color: {field};
+        border: 1px solid {border};
+        border-radius: 5px;
+        padding: 6px;
+        color: {text};
+    }}
+
+    QPushButton {{
+        background-color: {primary};
+        color: white; /* Buttons usually keep white text for contrast */
+        border: none;
+        border-radius: 5px;
+        padding: 8px 15px;
+        font-weight: 600;
+    }}
+    
+    QPushButton:hover {{ background-color: {hover}; }}
+
     QTabWidget::pane {{
         border: 1px solid {border};
-        border-radius: 20px;
-        background-color: {panel};
-        margin-top: 10px;
+        background: {panel};
     }}
 
     QTabBar::tab {{
-        background: transparent;
-        color: {muted};
-        padding: 12px 30px;
-        margin: 5px;
-        border-radius: 12px;
-        font-weight: 600;
-        font-size: 14px;
-    }}
-
-    QTabBar::tab:hover {{
         background: {field};
+        border: 1px solid {border};
         color: {text};
+        padding: 8px 20px;
+        margin-right: 2px;
     }}
 
     QTabBar::tab:selected {{
@@ -58,75 +60,22 @@ def _theme(bg, panel, field, border, primary, hover, text, muted, accent):
         border-bottom: 2px solid {accent};
     }}
 
-    /* Cards / Groups */
     QGroupBox {{
-        background-color: {field};
+        background-color: {panel};
         border: 1px solid {border};
-        border-radius: 15px;
-        margin-top: 25px;
+        border-radius: 8px;
+        margin-top: 15px;
         padding-top: 20px;
         font-weight: bold;
-    }}
-    
-    QGroupBox::title {{
-        subcontrol-origin: margin;
-        subcontrol-position: top center;
-        padding: 5px 15px;
-        background-color: {accent};
-        color: {bg};
-        border-radius: 10px;
-        top: -10px;
+        color: {accent};
     }}
 
-    /* Inputs */
-    QLineEdit, QComboBox, QTextEdit {{
-        background-color: {bg};
-        border: 1px solid {border};
-        border-radius: 10px;
-        padding: 12px;
-        color: white;
-    }}
-    
-    QLineEdit:focus {{
-        border: 2px solid {accent};
-    }}
-
-    /* High-End Buttons */
-    QPushButton {{
-        background-color: {primary};
-        color: white;
-        border-radius: 12px;
-        padding: 15px 25px;
-        font-weight: 800;
-        font-size: 14px;
-        border: 1px solid {accent};
-    }}
-    
-    QPushButton:hover {{
-        background-color: {hover};
-        border: 1px solid white;
-    }}
-
-    QPushButton#ActionBtn {{
-        background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 {primary}, stop:1 {accent});
-    }}
-
-    /* Progress Bar */
-    QProgressBar {{
-        border: 1px solid {border};
-        border-radius: 10px;
-        text-align: center;
-        background-color: {bg};
-        height: 10px;
-    }}
-    
-    QProgressBar::chunk {{
-        background-color: {accent};
-        border-radius: 10px;
+    QCheckBox, QRadioButton {{
+        color: {text};
     }}
     """
 
 THEMES = {
-    "Studio Dark (Official)": _theme("#0a0a0a", "#121212", "#1e1e1e", "#2a2a2a", "#325cff", "#4d74ff", "#e0e0e0", "#888888", "#00d4ff"),
-    "Titanium Light": _theme("#f0f2f5", "#ffffff", "#f8f9fa", "#d1d9e6", "#2c3e50", "#34495e", "#1a1a1a", "#7f8c8d", "#3498db"),
+    "Studio Dark (Default)": _theme("#1a1a1a", "#242424", "#2d2d2d", "#3d3d3d", "#0078d4", "#2b88d8", "#ffffff", "#aaaaaa", "#00a2ff"),
+    "Professional Light": _theme("#f5f7fa", "#ffffff", "#eff3f8", "#d1d9e6", "#3b6f98", "#4e87b5", "#172432", "#627384", "#4c91c8"),
 }
