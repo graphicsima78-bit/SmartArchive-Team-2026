@@ -1,5 +1,5 @@
 @echo off
-title ArchivePro - Visuals Edition
-echo Starting Design & Images Archive Tool...
+title ArchivePro - Visual Master
+echo Starting Specialized Design & Image Tool...
 python visual_main.py
 pause
