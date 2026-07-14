@@ -4,7 +4,7 @@ import json
 from datetime import datetime
 from PySide6.QtCore import QThread, Slot, Qt
 from PySide6.QtWidgets import (
-    QApplication, QButtonGroup, QCheckBox, QComboBox, QFileDialog, QGroupBox,
+    QApplication, QCheckBox, QComboBox, QFileDialog, QGroupBox,
     QHBoxLayout, QLabel, QLineEdit, QMainWindow, QMessageBox, QPushButton,
     QProgressBar, QRadioButton, QTabWidget, QTextEdit, QVBoxLayout, QWidget
 )
@@ -17,8 +17,9 @@ class MainWindow(QMainWindow):
     
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("ArchivePro Studio v51.0 [Smart Artist]")
+        self.setWindowTitle("ArchivePro Studio v52.0 [Stability Final]")
         self.setFixedSize(1000, 780)
+        
         self.tab_config = {}
         self.last_paths = self._load_settings()
         self.worker_thread = None
@@ -42,103 +43,127 @@ class MainWindow(QMainWindow):
 
     def _build_ui(self):
         central = QWidget(); self.setCentralWidget(central)
-        layout = QVBoxLayout(central); layout.setContentsMargins(15, 15, 15, 15)
+        layout = QVBoxLayout(central); layout.setContentsMargins(20, 20, 20, 20)
 
-        # Progress Bar on Top
+        # Permanent Header
+        header = QHBoxLayout()
+        title_box = QVBoxLayout()
+        title = QLabel("ArchivePro Studio")
+        title.setObjectName("TitleLabel")
+        subtitle = QLabel("مدیریت هوشمند (نسخه پایدار و نهایی)")
+        subtitle.setObjectName("SubtitleLabel")
+        title_box.addWidget(title); title_box.addWidget(subtitle)
+        header.addLayout(title_box, 1)
+
+        self.theme_combo = QComboBox()
+        self.theme_combo.addItems(THEMES.keys())
+        self.theme_combo.currentTextChanged.connect(self._apply_theme)
+        header.addWidget(QLabel("تم:")); header.addWidget(self.theme_combo)
+        layout.addLayout(header)
+
+        # PROGRESS BAR (Fixed Top)
         self.prog_group = QGroupBox("وضعیت پیشرفت")
         prog_l = QVBoxLayout(self.prog_group)
         self.global_progress = QProgressBar()
         self.global_progress.setStyleSheet("QProgressBar::chunk { background-color: #2ecc71; }")
+        self.global_progress.setMinimumHeight(25)
         prog_l.addWidget(self.global_progress)
         layout.addWidget(self.prog_group)
 
         self.tabs = QTabWidget(); layout.addWidget(self.tabs, 1)
 
-        # Tab: Media
+        # Tabs setup
         self._add_media_tab()
-        # Tab: All
-        self._add_general_tab("all", "بایگانی کلی", "بایگانی تمام فایل‌ها.")
-        # Tab: Photos
-        self._add_general_tab("photos", "تصاویر", "دسته‌بندی عکس و لایه باز.")
-
+        self._add_general_tab("all", "بایگانی کلی")
+        self._add_general_tab("photos", "تصاویر و وکتور")
         self._add_report_tab()
+
+        # Footer
+        footer = QHBoxLayout()
+        self.stop_btn = QPushButton("توقف کامل")
+        self.stop_btn.setEnabled(False)
+        self.stop_btn.clicked.connect(self.stop_processing)
+        footer.addStretch(1); footer.addWidget(self.stop_btn)
+        layout.addLayout(footer)
 
     def _add_media_tab(self):
         tab = QWidget(); l = QVBoxLayout(tab)
-        path_box = QGroupBox("تنظیمات مسیر موسیقی"); pl = QVBoxLayout(path_box)
         src = QLineEdit(); dst = QLineEdit()
         saved = self.last_paths.get("media", {})
         src.setText(saved.get("source", "")); dst.setText(saved.get("destination", ""))
         
-        for label, edit in [("مبدأ:", src), ("مقصد:", dst)]:
-            row = QHBoxLayout(); row.addWidget(QLabel(label)); row.addWidget(edit, 1)
-            btn = QPushButton("انتخاب"); btn.clicked.connect(lambda e=edit: self._browse(e))
-            row.addWidget(btn); pl.addLayout(row)
-        l.addWidget(path_box)
+        box = QGroupBox("مسیرهای موسیقی")
+        bl = QVBoxLayout(box)
+        for lbl, edit in [("مبدأ:", src), ("مقصد:", dst)]:
+            r = QHBoxLayout(); r.addWidget(QLabel(lbl)); r.addWidget(edit, 1)
+            b = QPushButton("..."); b.clicked.connect(lambda e=edit: self._browse(e))
+            r.addWidget(b); bl.addLayout(r)
+        l.addWidget(box)
 
         lang_group = QGroupBox("تنظیمات نام خواننده")
         ll = QHBoxLayout(lang_group)
-        self.radio_per = QRadioButton("فارسی (پیشنهادی)"); self.radio_per.setChecked(True)
-        self.radio_eng = QRadioButton("English"); self.radio_def = QRadioButton("نام اصلی فایل")
+        self.radio_per = QRadioButton("فارسی (تبدیل خودکار)"); self.radio_per.setChecked(True)
+        self.radio_eng = QRadioButton("English"); self.radio_def = QRadioButton("نام اصلی")
         for r in [self.radio_per, self.radio_eng, self.radio_def]: ll.addWidget(r)
         l.addWidget(lang_group)
 
-        start = QPushButton("شروع بایگانی موسیقی")
-        start.setObjectName("ActionBtn")
-        start.setMinimumHeight(45)
-        start.clicked.connect(lambda: self.start_processing("media"))
-        l.addWidget(start); l.addStretch(1)
-        
-        self.tab_config["media"] = {"source": src, "destination": dst, "lang": "persian", "delete": QCheckBox()}
-        self.tabs.addTab(tab, "صوت و رسانه")
+        btn = QPushButton("شروع بایگانی موسیقی"); btn.setObjectName("ActionBtn")
+        btn.setMinimumHeight(40); btn.clicked.connect(lambda: self.start_processing("media"))
+        l.addWidget(btn); l.addStretch(1)
+        self.tab_config["media"] = {"source": src, "destination": dst, "delete": QCheckBox()}
+        self.tabs.addTab(tab, "صوت و موسیقی")
 
-    def _add_general_tab(self, key, title, desc):
-        tab = QWidget(); l = QVBoxLayout(tab); l.addWidget(QLabel(desc))
+    def _add_general_tab(self, k, t):
+        tab = QWidget(); l = QVBoxLayout(tab)
         src = QLineEdit(); dst = QLineEdit()
-        saved = self.last_paths.get(key, {})
+        saved = self.last_paths.get(k, {})
         src.setText(saved.get("source", "")); dst.setText(saved.get("destination", ""))
-        
         box = QGroupBox("مسیرها"); bl = QVBoxLayout(box)
-        for label, edit in [("مبدأ:", src), ("مقصد:", dst)]:
-            row = QHBoxLayout(); row.addWidget(QLabel(label)); row.addWidget(edit, 1)
-            btn = QPushButton("انتخاب"); btn.clicked.connect(lambda e=edit: self._browse(e))
-            row.addWidget(btn); bl.addLayout(row)
+        for lbl, edit in [("مبدأ:", src), ("مقصد:", dst)]:
+            r = QHBoxLayout(); r.addWidget(QLabel(lbl)); r.addWidget(edit, 1)
+            b = QPushButton("..."); b.clicked.connect(lambda e=edit: self._browse(e))
+            r.addWidget(b); bl.addLayout(r)
         l.addWidget(box)
-        
-        start = QPushButton(f"شروع {title}"); start.setMinimumHeight(40)
-        start.clicked.connect(lambda: self.start_processing(key))
-        l.addWidget(start); l.addStretch(1)
-        self.tab_config[key] = {"source": src, "destination": dst, "delete": QCheckBox()}
-        self.tabs.addTab(tab, title)
+        btn = QPushButton(f"شروع {t}"); btn.setMinimumHeight(40)
+        btn.clicked.connect(lambda: self.start_processing(k))
+        l.addWidget(btn); l.addStretch(1)
+        self.tab_config[k] = {"source": src, "destination": dst, "delete": QCheckBox()}
+        self.tabs.addTab(tab, t)
 
     def _add_report_tab(self):
         tab = QWidget(); l = QVBoxLayout(tab)
         self.log_box = QTextEdit(); self.log_box.setReadOnly(True)
         l.addWidget(self.log_box); self.tabs.addTab(tab, "گزارش")
 
-    def _browse(self, edit):
-        p = QFileDialog.getExistingDirectory(self, "انتخاب پوشه", edit.text())
-        if p: edit.setText(p); self._save_settings()
+    def _browse(self, e):
+        p = QFileDialog.getExistingDirectory(self, "انتخاب پوشه", e.text())
+        if p: e.setText(p); self._save_settings()
 
-    def _apply_theme(self, name):
-        self.setStyleSheet(THEMES.get(name, list(THEMES.values())[0]))
+    def _apply_theme(self, n):
+        self.setStyleSheet(THEMES.get(n, list(THEMES.values())[0]))
 
-    def start_processing(self, key):
-        c = self.tab_config[key]
+    def stop_processing(self):
+        if self.worker: self.worker.stop(); self.stop_btn.setEnabled(False)
+
+    def start_processing(self, k):
+        c = self.tab_config[k]
         pref = "persian"
-        if key == "media":
+        if k == "media":
             if self.radio_eng.isChecked(): pref = "english"
             if self.radio_def.isChecked(): pref = "default"
         
+        self.log_box.clear(); self.global_progress.setValue(0); self.stop_btn.setEnabled(True)
+        self._save_settings()
+        self.tabs.setCurrentIndex(self.tabs.count()-1)
+
         self.worker_thread = QThread()
         self.worker = ArchiveWorker(c["source"].text(), c["destination"].text(), audio_pref=pref)
         self.worker.moveToThread(self.worker_thread)
         self.worker_thread.started.connect(self.worker.run)
         self.worker.progress.connect(self.global_progress.setValue)
         self.worker.log.connect(lambda t: self.log_box.append(t))
-        self.worker.finished.connect(lambda: self.global_progress.setValue(0))
+        self.worker.finished.connect(lambda: [self.global_progress.setValue(100), self.stop_btn.setEnabled(False)])
         self.worker_thread.start()
 
 if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    window = MainWindow(); window.show(); sys.exit(app.exec())
+    app = QApplication(sys.argv); window = MainWindow(); window.show(); sys.exit(app.exec())

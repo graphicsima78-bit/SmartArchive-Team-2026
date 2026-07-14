@@ -15,55 +15,91 @@ class ArchiveWorker(QObject):
         self.source_dir = Path(source_dir)
         self.dest_dir = Path(dest_dir)
         self.audio_pref = kwargs.get('audio_pref', 'persian')
+        self.move_mode = bool(kwargs.get('delete_after_copy', False))
         self._stop = threading.Event()
 
-    def _find_existing_folder(self, parent, target):
+    def _normalize(self, n):
+        return n.lower().replace(" ", "").replace("_", "").replace("-", "").replace("ي", "ی").replace("ك", "ک")
+
+    def _find_smart_folder(self, parent, target):
         if not parent.exists(): return None
-        tn = target.lower().replace(" ", "")
-        for entry in os.scandir(parent):
-            if entry.is_dir() and entry.name.lower().replace(" ", "") == tn:
-                return entry.name
+        
+        # 1. اول شباهت مستقیم را چک کن
+        target_norm = self._normalize(target)
+        try:
+            entries = list(os.scandir(parent))
+            for entry in entries:
+                if entry.is_dir() and self._normalize(entry.name) == target_norm:
+                    return entry.name
+            
+            # 2. اگر خواننده است، تمام واریانت‌های فارسی/انگلیسی را چک کن
+            variants = AudioAnalyzer.get_variants(target)
+            if len(variants) > 1:
+                variant_norms = [self._normalize(v) for v in variants]
+                for entry in entries:
+                    if entry.is_dir() and self._normalize(entry.name) in variant_norms:
+                        return entry.name
+        except: pass
         return None
 
-    def _resolve_path(self, parts):
+    def _get_path(self, parts):
         curr = self.dest_dir
         res = []
         for p in parts:
-            exist = self._find_existing_folder(curr, p)
-            name = exist if exist else p
+            existing = self._find_smart_folder(curr, p)
+            name = existing if existing else p
             curr = curr / name
             res.append(name)
         return curr
 
-    def run(self):
-        files = [p for p in self.source_dir.rglob("*") if p.is_file()]
-        total = len(files)
-        for i, path in enumerate(files):
-            if self._stop.is_set(): break
-            ext = path.suffix.lower()
-            
-            # Media Logic
-            if ext in {'.mp3', '.wav', '.flac'}:
-                meta = AudioAnalyzer.analyze(path)
-                parts = AudioAnalyzer.folder_parts(meta, self.audio_pref)
-                name = AudioAnalyzer.destination_filename(path, meta, self.audio_pref)
-            else:
-                # Basic Categorization for others
-                if ext in {'.psd', '.cdr', '.ai'}: parts = ["گرافیک"]
-                elif ext in {'.jpg', '.png'}: parts = ["تصاویر"]
-                else: parts = ["سایر"]
-                name = path.name
+    def _get_info(self, path):
+        ext = path.suffix.lower()
+        name = path.stem.lower()
+        
+        # Priority 1: Graphics
+        if ext == ".psd": return ["تصاویر", "لایه_باز", "Photoshop"], path.name
+        if ext == ".cdr": return ["گرافیک_وکتور", "CorelDRAW"], path.name
+        if ext in {'.ai', '.eps', '.svg'}: return ["گرافیک_وکتور", "Vector_Assets"], path.name
 
-            target = self._resolve_path(parts)
-            target.mkdir(parents=True, exist_ok=True)
-            dest = target / name
+        # Priority 2: Audio
+        if ext in {'.mp3', '.wav', '.flac', '.m4a'}:
+            meta = AudioAnalyzer.analyze(path)
+            parts = AudioAnalyzer.folder_parts(meta, self.audio_pref)
+            if parts[0] == "موسیقی": parts[0] = "موسیقی_و_صوت"
+            new_name = AudioAnalyzer.destination_filename(path, meta, self.audio_pref)
+            return parts, new_name
+
+        # Priority 3: Architecture
+        if ext in {'.jpg', '.png', '.dwg', '.obj'}:
+            if any(x in name for x in ["plaster", "گچبری", "ستون"]): return ["معماری", "ساختمانی"], path.name
+            if any(x in name for x in ["curtain", "پرده", "لوستر", "lamp"]): return ["معماری", "تجهیزات"], path.name
+
+        if ext in {'.jpg', '.png'}: return ["تصاویر", "سایر"], path.name
+        if ext in {'.zip', '.rar', '.7z'}: return ["بایگانی_و_فشرده"], path.name
+        return ["سایر_موارد"], path.name
+
+    def run(self):
+        try:
+            files = [p for p in self.source_dir.rglob("*") if p.is_file()]
+            total = len(files)
+            if total == 0: self.progress.emit(100); return
             
-            try:
-                shutil.copy2(path, dest)
-                self.log.emit(f"OK: {name}")
-            except Exception as e: self.log.emit(f"Error: {e}")
-            
-            self.progress.emit(int((i+1)*100/max(total, 1)))
-        self.finished.emit()
+            for i, path in enumerate(files):
+                if self._stop.is_set(): break
+                try:
+                    parts, new_name = self._get_info(path)
+                    target_dir = self._get_path(parts)
+                    target_dir.mkdir(parents=True, exist_ok=True)
+                    
+                    dest = target_dir / new_name
+                    if dest.exists():
+                        dest = target_dir / f"{Path(new_name).stem}_کپی{Path(new_name).suffix}"
+                    
+                    shutil.copy2(path, dest)
+                    if self.move_mode: os.remove(path)
+                    self.log.emit(f"بایگانی شد: {new_name}")
+                except Exception as e: self.log.emit(f"خطا: {e}")
+                self.progress.emit(int((i+1)*100/total))
+        finally: self.finished.emit()
 
     def stop(self): self._stop.set()
