@@ -2,12 +2,11 @@ import sys
 import os
 import json
 from datetime import datetime
-from PySide6.QtCore import QThread, Slot, Qt, QStandardPaths
+from PySide6.QtCore import QThread, Slot, Qt
 from PySide6.QtWidgets import (
     QApplication, QButtonGroup, QCheckBox, QComboBox, QFileDialog, QGroupBox,
     QHBoxLayout, QLabel, QLineEdit, QMainWindow, QMessageBox, QPushButton,
-    QProgressBar, QRadioButton, QTabWidget, QTextEdit, QTreeWidget,
-    QTreeWidgetItem, QVBoxLayout, QWidget
+    QProgressBar, QRadioButton, QTabWidget, QTextEdit, QVBoxLayout, QWidget
 )
 
 from archiver import ArchiveWorker
@@ -29,7 +28,7 @@ class MainWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("ArchivePro Studio v40.0 [Drive Navigator]")
+        self.setWindowTitle("ArchivePro Studio v41.0 [Visible Progress]")
         self.resize(1000, 750)
         self.worker_thread = None
         self.worker = None
@@ -71,8 +70,7 @@ class MainWindow(QMainWindow):
         title_box = QVBoxLayout()
         title = QLabel("ArchivePro Studio")
         title.setObjectName("TitleLabel")
-        subtitle = QLabel("مدیریت هوشمند فایل در تمام درایوها")
-        subtitle.setObjectName("SubtitleLabel")
+        subtitle = QLabel("مدیریت هوشمند فایل")
         title_box.addWidget(title)
         title_box.addWidget(subtitle)
         header.addLayout(title_box, 1)
@@ -92,48 +90,68 @@ class MainWindow(QMainWindow):
         
         self._build_report_tab()
 
-        # Global Controls
+        # Controls & Progress (Bottom Section)
+        bottom_box = QVBoxLayout()
+        
         controls = QHBoxLayout()
-        self.pause_btn = QPushButton("توقف موقت")
         self.stop_btn = QPushButton("توقف کامل")
-        self.pause_btn.setEnabled(False)
         self.stop_btn.setEnabled(False)
-        controls.addWidget(self.pause_btn)
+        self.stop_btn.clicked.connect(self.stop_processing)
+        controls.addStretch(1)
         controls.addWidget(self.stop_btn)
-        self.main_layout.addLayout(controls)
+        bottom_box.addLayout(controls)
 
-        # Progress
+        # THE GREEN PROGRESS LINE
         self.global_progress = QProgressBar()
         self.global_progress.setRange(0, 100)
-        self.main_layout.addWidget(self.global_progress)
+        self.global_progress.setValue(0)
+        self.global_progress.setTextVisible(True)
+        self.global_progress.setFormat("پیشرفت عملیات: %p%")
+        self.global_progress.setMinimumHeight(25)
+        # Force Green Style
+        self.global_progress.setStyleSheet("""
+            QProgressBar {
+                border: 1px solid #333;
+                border-radius: 5px;
+                text-align: center;
+                background-color: #1a1a1a;
+                color: white;
+                font-weight: bold;
+            }
+            QProgressBar::chunk {
+                background-color: #2ecc71;
+                border-radius: 4px;
+            }
+        """)
+        bottom_box.addWidget(self.global_progress)
+        
+        self.main_layout.addLayout(bottom_box)
 
     def _build_category_tab(self, key, title, focus_types, description):
         tab = QWidget(); layout = QVBoxLayout(tab)
         layout.addWidget(QLabel(description))
         
-        group = QGroupBox(f"انتخاب درایو و پوشه ({title})")
+        group = QGroupBox(f"مسیرهای {title}")
         gl = QVBoxLayout(group)
         src = QLineEdit(); dst = QLineEdit()
-        
-        # Restore last used paths
         saved = self.last_paths.get(key, {})
         src.setText(saved.get("source", ""))
         dst.setText(saved.get("destination", ""))
 
         src_btn = QPushButton("انتخاب مبدأ"); dst_btn = QPushButton("انتخاب مقصد")
-        src_btn.clicked.connect(lambda: self._browse_folder(src, "انتخاب مبدأ از درایوها"))
-        dst_btn.clicked.connect(lambda: self._browse_folder(dst, "انتخاب مقصد بایگانی"))
+        src_btn.clicked.connect(lambda: self._browse_folder(src, "انتخاب مبدأ"))
+        dst_btn.clicked.connect(lambda: self._browse_folder(dst, "انتخاب مقصد"))
         
-        r1 = QHBoxLayout(); r1.addWidget(QLabel("از مسیر:")); r1.addWidget(src, 1); r1.addWidget(src_btn)
-        r2 = QHBoxLayout(); r2.addWidget(QLabel("به درایو/پوشه:")); r2.addWidget(dst, 1); r2.addWidget(dst_btn)
+        r1 = QHBoxLayout(); r1.addWidget(QLabel("از:")); r1.addWidget(src, 1); r1.addWidget(src_btn)
+        r2 = QHBoxLayout(); r2.addWidget(QLabel("به:")); r2.addWidget(dst, 1); r2.addWidget(dst_btn)
         gl.addLayout(r1); gl.addLayout(r2); layout.addWidget(group)
 
-        opts = {"source": src, "destination": dst, "focus": focus_types, "delete": QCheckBox("حذف از مبدأ پس از جابه‌جایی"), "reprocess": QCheckBox("بروزرسانی آرشیو قبلی"), "quarantine": QCheckBox("جدا کردن تکراری‌ها")}
-        sec = QGroupBox("تنظیمات بایگانی"); sl = QVBoxLayout(sec)
-        sl.addWidget(opts["delete"]); sl.addWidget(opts["reprocess"]); sl.addWidget(opts["quarantine"])
+        opts = {"source": src, "destination": dst, "focus": focus_types, "delete": QCheckBox("حذف از مبدأ")}
+        sec = QGroupBox("تنظیمات"); sl = QVBoxLayout(sec)
+        sl.addWidget(opts["delete"])
         layout.addWidget(sec)
 
-        start = QPushButton(f"شروع فرآیند {title}")
+        start = QPushButton(f"شروع {title}")
         start.setObjectName("ActionBtn")
         start.clicked.connect(lambda: self.start_processing(key))
         layout.addWidget(start); layout.addStretch(1)
@@ -144,12 +162,10 @@ class MainWindow(QMainWindow):
         tab = QWidget(); layout = QVBoxLayout(tab)
         self.log_box = QTextEdit(); self.log_box.setReadOnly(True)
         layout.addWidget(self.log_box)
-        self.tabs.addTab(tab, "گزارش و مانیتورینگ")
+        self.tabs.addTab(tab, "گزارش")
 
     def _browse_folder(self, edit, title):
-        # Start at the existing path or 'My Computer'
-        start_path = edit.text() if edit.text() else ""
-        path = QFileDialog.getExistingDirectory(self, title, start_path)
+        path = QFileDialog.getExistingDirectory(self, title, edit.text())
         if path:
             edit.setText(path)
             self._save_settings()
@@ -161,28 +177,28 @@ class MainWindow(QMainWindow):
         self.log_box.append(f"[{datetime.now().strftime('%H:%M:%S')}] {text}")
 
     def _on_finished(self):
-        self._append_log("--- پایان بایگانی در درایو مقصد ---")
+        self._append_log("--- پایان عملیات ---")
         self.global_progress.setValue(0)
         self.stop_btn.setEnabled(False)
         if self.worker_thread:
             self.worker_thread.quit()
-            self.worker_thread.wait()
         self.worker = None; self.worker_thread = None
+
+    def stop_processing(self):
+        if self.worker: self.worker.stop()
 
     def start_processing(self, key):
         c = self.tab_config[key]
         s, d = c["source"].text().strip(), c["destination"].text().strip()
-        if not s or not d:
-            QMessageBox.warning(self, "خطا", "لطفاً درایو مبدأ و مقصد را انتخاب کنید.")
-            return
+        if not s or not d: return
         
         self.log_box.clear()
-        self._append_log(f"آماده‌سازی برای انتقال فایل‌ها به درایو: {os.path.splitdrive(d)[0]}")
+        self.global_progress.setValue(0)
         self.stop_btn.setEnabled(True)
         self._save_settings()
 
         self.worker_thread = QThread()
-        self.worker = ArchiveWorker(s, d, delete_after_copy=c["delete"].isChecked(), focus_types=c["focus"])
+        self.worker = ArchiveWorker(s, d, delete_after_copy=c["delete"].isChecked())
         self.worker.moveToThread(self.worker_thread)
         self.worker_thread.started.connect(self.worker.run)
         self.worker.progress.connect(self.global_progress.setValue)
