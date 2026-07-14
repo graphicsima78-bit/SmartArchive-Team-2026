@@ -25,7 +25,7 @@ class MainWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("ArchivePro Studio v37.0 [Precision Refined]")
+        self.setWindowTitle("ArchivePro Studio v38.0 [Audio Polish]")
         self.resize(1000, 750)
         self.worker_thread = None
         self.worker = None

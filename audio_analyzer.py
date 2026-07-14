@@ -233,8 +233,9 @@ class AudioAnalyzer:
 
     @staticmethod
     def _remove_leading_zeros(filename_stem):
-        """Remove only a run of leading ASCII/Persian/Arabic zeros and its separator."""
-        cleaned = re.sub(r"^[0٠۰]+[\s._-]*", "", filename_stem)
+        """Remove leading numbers and separators (e.g., '01 - ', '002. ', '03_')."""
+        # Matches patterns like '01 - ', '02. ', '03 ', '04_', '005 '
+        cleaned = re.sub(r"^[0-9٠-٩]+[\s._-]*", "", filename_stem)
         return cleaned.strip() or filename_stem
 
     @classmethod
