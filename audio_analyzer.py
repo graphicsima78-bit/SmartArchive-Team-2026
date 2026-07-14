@@ -6,7 +6,6 @@ except ImportError:
     MutagenFile = None
 
 class AudioAnalyzer:
-    # نقشه جامع خوانندگان (نام فارسی و انگلیسی)
     SINGER_DATA = {
         "farzad farzin": ("فرزاد فرزین", "Farzad Farzin"),
         "ehsan khajeh amiri": ("احسان خواجه امیری", "Ehsan Khajeh Amiri"),
@@ -20,38 +19,35 @@ class AudioAnalyzer:
         "googoosh": ("گوگوش", "Googoosh"),
         "siavash ghomayshi": ("سیاوش قمیشی", "Siavash Ghomayshi"),
         "shajarian": ("شجریان", "Shajarian"),
-        "hamid hiraad": ("حمید هیراد", "Hamid Hiraad"),
-        "mohsen ebrahimzadeh": ("محسن ابراهیم زاده", "Mohsen Ebrahimzadeh"),
-        "aron afshar": ("آرون افشار", "Aron Afshar"),
         "reza sadeghi": ("رضا صادقی", "Reza Sadeghi"),
         "mohsen chavoshi": ("محسن چاوشی", "Mohsen Chavoshi"),
         "mohsen yeganeh": ("محسن یگانه", "Mohsen Yeganeh"),
+        "sirvan khosravi": ("سیروان خسروی", "Sirvan Khosravi"),
+        "hamid hiraad": ("حمید هیراد", "Hamid Hiraad"),
     }
 
     @classmethod
-    def get_preferred_name(cls, artist_name, pref="persian"):
-        if not artist_name: return ""
-        nl = artist_name.lower().strip()
-        for key, (per, eng) in cls.SINGER_DATA.items():
-            if key in nl:
-                return per if pref == "persian" else eng
-        return artist_name
+    def get_preferred_name(cls, artist, pref="persian"):
+        if not artist: return ""
+        al = artist.lower().strip()
+        for k, (p, e) in cls.SINGER_DATA.items():
+            if k in al: return p if pref == "persian" else e
+        return artist
 
     @classmethod
-    def get_all_variants(cls, artist_name):
-        if not artist_name: return []
-        nl = artist_name.lower().strip()
-        for key, (per, eng) in cls.SINGER_DATA.items():
-            if key in nl:
-                return [per, eng, key, per.replace(" ", "_"), eng.replace(" ", "_")]
-        return [artist_name]
+    def get_all_variants(cls, artist):
+        if not artist: return []
+        al = artist.lower().strip()
+        for k, (p, e) in cls.SINGER_DATA.items():
+            if k in al: return [p, e, k, p.replace(" ", "_"), e.replace(" ", "_")]
+        return [artist]
 
     @staticmethod
-    def _clean(val):
-        if not val: return ""
-        # حذف هرگونه عدد و علامت از ابتدا
-        val = re.sub(r"^[0-9٠-٩\s._-]+", "", str(val))
-        return re.sub(r'[<>:"/\\|?*]+', "_", val.strip())[:80]
+    def _clean(text):
+        if not text: return ""
+        # حذف تهاجمی اعداد ابتدایی
+        text = re.sub(r"^[0-9٠-٩\s._-]+", "", str(text))
+        return re.sub(r'[<>:"/\\|?*]+', "_", text.strip())[:80]
 
     @classmethod
     def analyze(cls, path):
