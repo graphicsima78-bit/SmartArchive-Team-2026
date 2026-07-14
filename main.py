@@ -1,5 +1,6 @@
 import sys
 import shiboken6
+from datetime import datetime
 from PySide6.QtCore import QThread, Slot, Qt
 from PySide6.QtWidgets import (
     QApplication, QButtonGroup, QCheckBox, QComboBox, QFileDialog, QGroupBox,
@@ -14,18 +15,18 @@ from taxonomy import TaxonomyManager
 
 class MainWindow(QMainWindow):
     CATEGORY_TABS = {
-        "all": ("بایگانی هوشمند کلی", [], "بایگانی تمام فایل‌ها به صورت خودکار در شاخه‌های مربوطه (تصاویر، اسناد، ویدئو و...)."),
-        "creator": ("تولید محتوا (Reels/Cover)", ["creator"], "تمرکز بر ابزارهای طراحی ریلز، کاور و فتوشاپ."),
-        "photos": ("تصاویر و عکاسی", ["images"], "دسته‌بندی دقیق عکس‌ها (انسان، طبیعت، اشیاء)."),
-        "design": ("وکتور و طراحی", ["graphics"], "مدیریت فایل‌های لایه باز، آیکون‌ها و پترن‌ها."),
-        "documents": ("اسناد و آموزش", ["documents"], "مرتب‌سازی فایل‌های آفیس، PDF و کتاب‌ها."),
-        "engineering": ("فنی و مهندسی", ["architecture", "three_d"], "فایل‌های CAD و مدل‌های سه‌بعدی."),
-        "system": ("آرشیو و نرم‌افزار", ["archives"], "فایل‌های فشرده و برنامه‌های نصب."),
+        "all": ("بایگانی هوشمند کلی", [], "بایگانی تمام فایل‌ها به صورت خودکار در شاخه‌های مربوطه."),
+        "creator": ("تولید محتوا", ["creator"], "ابزارهای ریلز، کاور و فتوشاپ."),
+        "photos": ("تصاویر", ["images"], "دسته‌بندی دقیق عکس‌ها."),
+        "design": ("وکتور", ["graphics"], "مدیریت لایه باز، آیکون و پترن."),
+        "documents": ("اسناد", ["documents"], "آفیس، PDF و کتاب."),
+        "engineering": ("فنی", ["architecture", "three_d"], "CAD و مدل‌های سه‌بعدی."),
+        "system": ("آرشیو", ["archives"], "فایل‌های فشرده و برنامه‌ها."),
     }
 
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("ArchivePro Studio v38.0 [Audio Polish]")
+        self.setWindowTitle("ArchivePro Studio v39.0 [Auto-Reset]")
         self.resize(1000, 750)
         self.worker_thread = None
         self.worker = None
@@ -41,7 +42,6 @@ class MainWindow(QMainWindow):
         self.main_layout.setContentsMargins(20, 20, 20, 20)
         self.main_layout.setSpacing(10)
 
-        # Header
         header = QHBoxLayout()
         title_box = QVBoxLayout()
         title = QLabel("ArchivePro Studio")
@@ -61,94 +61,53 @@ class MainWindow(QMainWindow):
         header.addLayout(theme_layout)
         self.main_layout.addLayout(header)
 
-        # Tabs
         self.tabs = QTabWidget()
         self.main_layout.addWidget(self.tabs, 1)
         for key, (title_text, focus_types, description) in self.CATEGORY_TABS.items():
             self._build_category_tab(key, title_text, focus_types, description)
-        self._build_project_tab()
-        self._build_taxonomy_tab()
+        
+        # Adding manual buttons for Stop/Pause
+        self.report_controls = QHBoxLayout()
+        self.pause_button = QPushButton("توقف موقت")
+        self.stop_button = QPushButton("توقف کامل")
+        self.pause_button.setEnabled(False)
+        self.stop_button.setEnabled(False)
+        self.report_controls.addWidget(self.pause_button)
+        self.report_controls.addWidget(self.stop_button)
+        self.main_layout.addLayout(self.report_controls)
+
         self._build_report_tab()
 
-        # Global Progress Bar (Always Visible)
-        self.global_progress_group = QGroupBox("وضعیت پیشرفت کل")
+        self.global_progress_group = QGroupBox("وضعیت پیشرفت")
         progress_layout = QVBoxLayout(self.global_progress_group)
         self.global_progress = QProgressBar()
         self.global_progress.setRange(0, 100)
-        self.global_progress.setValue(0)
         progress_layout.addWidget(self.global_progress)
         self.main_layout.addWidget(self.global_progress_group)
 
     def _build_category_tab(self, key, title, focus_types, description):
-        tab = QWidget()
-        layout = QVBoxLayout(tab)
+        tab = QWidget(); layout = QVBoxLayout(tab)
         layout.addWidget(QLabel(description))
-
         folder_group = QGroupBox("تنظیمات مسیر")
-        folder_layout = QVBoxLayout(folder_group)
-        source_edit = QLineEdit()
-        destination_edit = QLineEdit()
-        source_edit.setPlaceholderText("پوشه مبدأ")
-        destination_edit.setPlaceholderText("پوشه مقصد")
-        source_btn = QPushButton("انتخاب مبدأ")
-        dest_btn = QPushButton("انتخاب مقصد")
-        source_btn.clicked.connect(lambda: self._browse_folder(source_edit, "انتخاب پوشه مبدأ"))
-        dest_btn.clicked.connect(lambda: self._browse_folder(destination_edit, "انتخاب پوشه مقصد"))
+        fl = QVBoxLayout(folder_group)
+        src = QLineEdit(); dst = QLineEdit()
+        src_btn = QPushButton("انتخاب مبدأ"); dst_btn = QPushButton("انتخاب مقصد")
+        src_btn.clicked.connect(lambda: self._browse_folder(src, "انتخاب مبدأ"))
+        dst_btn.clicked.connect(lambda: self._browse_folder(dst, "انتخاب مقصد"))
+        r1 = QHBoxLayout(); r1.addWidget(QLabel("مبدأ:")); r1.addWidget(src, 1); r1.addWidget(src_btn)
+        r2 = QHBoxLayout(); r2.addWidget(QLabel("مقصد:")); r2.addWidget(dst, 1); r2.addWidget(dst_btn)
+        fl.addLayout(r1); fl.addLayout(r2); layout.addWidget(folder_group)
         
-        row1 = QHBoxLayout(); row1.addWidget(QLabel("مبدأ:")); row1.addWidget(source_edit, 1); row1.addWidget(source_btn)
-        row2 = QHBoxLayout(); row2.addWidget(QLabel("مقصد:")); row2.addWidget(destination_edit, 1); row2.addWidget(dest_btn)
-        folder_layout.addLayout(row1)
-        folder_layout.addLayout(row2)
-        layout.addWidget(folder_group)
-
-        options = {"source": source_edit, "destination": destination_edit, "focus": focus_types, "quick": False}
-        self._add_security_options(layout, options)
-
+        options = {"source": src, "destination": dst, "focus": focus_types, "delete": QCheckBox("حذف فایل مبدأ"), "reprocess": QCheckBox("پردازش مجدد"), "quarantine": QCheckBox("قرنطینه تکراری")}
+        sec_group = QGroupBox("امنیت"); sl = QVBoxLayout(sec_group)
+        sl.addWidget(options["delete"]); sl.addWidget(options["reprocess"]); sl.addWidget(options["quarantine"])
+        layout.addWidget(sec_group)
+        
         start = QPushButton(f"شروع {title}")
-        start.setObjectName("ActionBtn")
         start.clicked.connect(lambda: self.start_processing(key))
-        layout.addWidget(start)
-        layout.addStretch(1)
+        layout.addWidget(start); layout.addStretch(1)
         self.tab_config[key] = options
         self.tabs.addTab(tab, title)
-
-    def _add_security_options(self, layout, options):
-        group = QGroupBox("امنیت و بایگانی")
-        group_layout = QVBoxLayout(group)
-        delete = QCheckBox("حذف فایل مبدأ پس از انتقال")
-        reprocess = QCheckBox("پردازش دوباره فایل‌های تکراری")
-        quarantine = QCheckBox("انتقال تکراری‌های دقیق به پوشه جداگانه")
-        group_layout.addWidget(delete)
-        group_layout.addWidget(reprocess)
-        group_layout.addWidget(quarantine)
-        layout.addWidget(group)
-        options.update({"delete": delete, "reprocess": reprocess, "quarantine": quarantine})
-
-    def _build_project_tab(self):
-        tab = QWidget(); layout = QVBoxLayout(tab)
-        layout.addWidget(QLabel("در حالت پروژه، تمام فایل‌ها در یک پوشه واحد طبقه‌بندی می‌شوند."))
-        group = QGroupBox("تعریف پروژه جدید")
-        gl = QVBoxLayout(group)
-        src = QLineEdit(); dst = QLineEdit()
-        name = QLineEdit(); name.setPlaceholderText("نام پروژه")
-        type_cb = QComboBox(); type_cb.addItems(["معماری", "تولید محتوا"])
-        gl.addWidget(QLabel("مبدأ پروژه:")); gl.addWidget(src)
-        gl.addWidget(QLabel("مقصد نهایی:")); gl.addWidget(dst)
-        gl.addWidget(QLabel("نام پروژه:")); gl.addWidget(name)
-        gl.addWidget(QLabel("نوع پروژه:")); gl.addWidget(type_cb)
-        layout.addWidget(group)
-        start = QPushButton("شروع بایگانی پروژه")
-        start.clicked.connect(lambda: self.start_processing("projects"))
-        layout.addWidget(start); layout.addStretch(1)
-        self.tab_config["projects"] = {"source": src, "destination": dst, "focus": [], "quick": False, "project_name": name, "project_type": type_cb, "delete": QCheckBox(), "reprocess": QCheckBox(), "quarantine": QCheckBox()}
-        self.tabs.addTab(tab, "پروژه‌ها")
-
-    def _build_taxonomy_tab(self):
-        tab = QWidget(); layout = QVBoxLayout(tab)
-        self.taxonomy_tree = QTreeWidget()
-        self.taxonomy_tree.setHeaderLabels(["درخت دسته‌بندی فعلی"])
-        layout.addWidget(self.taxonomy_tree)
-        self.tabs.addTab(tab, "مدیریت شاخه‌ها")
 
     def _build_report_tab(self):
         tab = QWidget(); layout = QVBoxLayout(tab)
@@ -166,30 +125,35 @@ class MainWindow(QMainWindow):
     def _append_log(self, text):
         self.log_box.append(f"[{datetime.now().strftime('%H:%M:%S')}] {text}")
 
+    def _on_finished(self):
+        self._append_log("--- عملیات با موفقیت پایان یافت ---")
+        self.global_progress.setValue(0)
+        self.pause_button.setEnabled(False)
+        self.stop_button.setEnabled(False)
+        if self.worker_thread:
+            self.worker_thread.quit()
+            self.worker_thread.wait()
+        self.worker = None
+        self.worker_thread = None
+
     def start_processing(self, key):
         config = self.tab_config[key]
-        src = config["source"].text().strip()
-        dst = config["destination"].text().strip()
-        if not src or not dst:
-            QMessageBox.warning(self, "خطا", "لطفاً مسیرها را انتخاب کنید.")
-            return
-
-        if self.worker_thread and self.worker_thread.isRunning():
-            return
-
-        self.global_progress.setValue(0)
+        src, dst = config["source"].text(), config["destination"].text()
+        if not src or not dst: return
+        if self.worker_thread and self.worker_thread.isRunning(): return
+        
+        self.log_box.clear()
+        self._append_log(f"شروع فرآیند در تب: {key}")
+        self.pause_button.setEnabled(True)
+        self.stop_button.setEnabled(True)
+        
         self.worker_thread = QThread()
-        self.worker = ArchiveWorker(src, dst, delete_after_copy=config["delete"].isChecked(), 
-                                    reprocess_archived=config["reprocess"].isChecked(),
-                                    quarantine_duplicates=config["quarantine"].isChecked(),
-                                    focus_types=config["focus"])
+        self.worker = ArchiveWorker(src, dst, delete_after_copy=config["delete"].isChecked())
         self.worker.moveToThread(self.worker_thread)
         self.worker_thread.started.connect(self.worker.run)
         self.worker.progress.connect(self.global_progress.setValue)
         self.worker.log.connect(self._append_log)
-        self.worker.finished.connect(self.worker_thread.quit)
-        self.worker.finished.connect(self.worker.deleteLater)
-        self.worker_thread.finished.connect(self.worker_thread.deleteLater)
+        self.worker.finished.connect(self._on_finished)
         self.worker_thread.start()
 
 if __name__ == "__main__":
