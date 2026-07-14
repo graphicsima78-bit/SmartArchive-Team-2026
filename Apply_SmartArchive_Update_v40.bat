@@ -1,15 +1,14 @@
 @echo off
-title ArchivePro v38 Audio Polish
+title ArchivePro v40 Drive Navigator
 echo ===============================================
-echo      ArchivePro Studio v38.0 (Audio Fix)
+echo      ArchivePro Studio v40.0 (Multi-Drive)
 echo ===============================================
 echo.
-echo Cleaning Audio Filenames and Syncing Logic...
+echo Enabling Intelligent Drive Navigation and Memory...
 set CURR_DIR=%~dp0
 copy /Y "%CURR_DIR%archiver.py" "archiver.py"
 copy /Y "%CURR_DIR%main.py" "main.py"
 copy /Y "%CURR_DIR%styles.py" "styles.py"
-copy /Y "%CURR_DIR%audio_analyzer.py" "audio_analyzer.py"
 echo.
-echo [DONE] Version 38.0 Applied! (Audio Renaming Fixed)
+echo [DONE] Version 40.0 Applied! (Drives Fully Supported)
 pause
