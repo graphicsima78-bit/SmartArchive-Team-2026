@@ -1,0 +1,31 @@
+# Python and editor cache
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.vscode/
+.idea/
+
+# Local database, logs and test outputs
+archivepro.db
+archivepro.db-*
+*.db
+*.db-wal
+*.db-shm
+logs/
+Output/
+dist/
+build/
+
+# AI model files and secrets
+*.gguf
+*.aifs.meta
+models/
+llms/
+.env
+
+# Operating system / temporary files
+*.tmp
+*.bak
+*.old
+Desktop - Shortcut.lnk
