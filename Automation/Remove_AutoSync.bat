@@ -1,6 +1,6 @@
 @echo off
 setlocal
-schtasks /End /TN "SmartArchive-AutoSync" >nul 2>&1
-schtasks /Delete /TN "SmartArchive-AutoSync" /F
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0Remove_AutoSync.ps1"
+echo.
 pause
 endlocal
