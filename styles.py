@@ -1,88 +1,81 @@
-def _theme(background, panel, field, border, primary, hover, text, muted, accent):
+def _theme(bg, panel, field, border, primary, hover, text, muted, accent):
     return f"""
     QWidget {{
-        background-color: {background};
+        background-color: {bg};
         color: {text};
-        font-size: 13px;
+        font-family: 'Segoe UI', Tahoma, sans-serif;
+        font-size: 12px;
     }}
-    QMainWindow {{ background-color: {background}; }}
+    
+    QMainWindow {{ background-color: {bg}; }}
+
+    QLabel {{ color: {text}; }}
     QLabel#TitleLabel {{
-        font-size: 24px;
-        font-weight: 800;
-        color: {text};
-        padding: 5px 2px 0 2px;
-    }}
-    QLabel#SubtitleLabel {{
-        color: {muted};
-        padding: 0 2px 7px 2px;
-    }}
-    QLineEdit, QTextEdit, QComboBox {{
-        background-color: {field};
-        border: 1px solid {border};
-        border-radius: 7px;
-        padding: 9px;
-        selection-background-color: {accent};
-    }}
-    QComboBox::drop-down {{ border: 0; width: 24px; }}
-    QPushButton {{
-        background-color: {primary};
-        border: 1px solid {accent};
-        border-radius: 7px;
-        padding: 9px 15px;
-        font-weight: 700;
-    }}
-    QPushButton:hover {{ background-color: {hover}; }}
-    QPushButton:disabled {{
-        background-color: {panel};
-        border-color: {border};
-        color: {muted};
-    }}
-    QProgressBar {{
-        border: 1px solid {border};
-        border-radius: 7px;
-        text-align: center;
-        background: {field};
-        min-height: 21px;
-    }}
-    QProgressBar::chunk {{ background-color: {accent}; border-radius: 6px; }}
-    QCheckBox, QRadioButton {{ spacing: 8px; padding: 4px; }}
-    QGroupBox {{
-        background-color: {panel};
-        border: 1px solid {border};
-        border-radius: 9px;
-        margin-top: 13px;
-        padding: 13px 9px 9px 9px;
-        font-weight: 700;
+        font-size: 20px;
+        font-weight: bold;
         color: {accent};
     }}
-    QGroupBox::title {{ subcontrol-origin: margin; left: 12px; padding: 0 6px; }}
-    QTabWidget::pane {{
-        background-color: {panel};
-        border: 1px solid {border};
-        border-radius: 8px;
-        top: -1px;
+    
+    QLabel#SubtitleLabel {{
+        color: {muted};
+        font-size: 11px;
     }}
+
+    /* Inputs with dynamic text color */
+    QLineEdit, QComboBox, QTextEdit, QPlainTextEdit {{
+        background-color: {field};
+        border: 1px solid {border};
+        border-radius: 5px;
+        padding: 6px;
+        color: {text};
+    }}
+
+    QPushButton {{
+        background-color: {primary};
+        color: white; /* Buttons usually keep white text for contrast */
+        border: none;
+        border-radius: 5px;
+        padding: 8px 15px;
+        font-weight: 600;
+    }}
+    
+    QPushButton:hover {{ background-color: {hover}; }}
+
+    QTabWidget::pane {{
+        border: 1px solid {border};
+        background: {panel};
+    }}
+
     QTabBar::tab {{
         background: {field};
         border: 1px solid {border};
-        border-bottom: none;
-        border-top-left-radius: 8px;
-        border-top-right-radius: 8px;
-        padding: 10px 16px;
+        color: {text};
+        padding: 8px 20px;
         margin-right: 2px;
     }}
-    QTabBar::tab:selected {{ background: {primary}; color: white; font-weight: 800; }}
-    QTabBar::tab:hover {{ background: {hover}; }}
-    QScrollBar:vertical {{ background: {field}; width: 10px; margin: 2px; }}
-    QScrollBar::handle:vertical {{ background: {border}; border-radius: 4px; min-height: 24px; }}
+
+    QTabBar::tab:selected {{
+        background: {primary};
+        color: white;
+        border-bottom: 2px solid {accent};
+    }}
+
+    QGroupBox {{
+        background-color: {panel};
+        border: 1px solid {border};
+        border-radius: 8px;
+        margin-top: 15px;
+        padding-top: 20px;
+        font-weight: bold;
+        color: {accent};
+    }}
+
+    QCheckBox, QRadioButton {{
+        color: {text};
+    }}
     """
 
-
 THEMES = {
-    "تیره فولادی": _theme("#202832", "#293541", "#18212a", "#4a6074", "#355873", "#467695", "#edf4fa", "#aabac9", "#62a4d6"),
-    "اقیانوسی": _theme("#082735", "#0e3b4f", "#06202d", "#28617b", "#087e8b", "#0ba4b3", "#e8fbff", "#a4d4df", "#24c1ce"),
-    "جنگل": _theme("#172820", "#253a2d", "#132019", "#4b6c54", "#39734c", "#4f925f", "#f0f8ee", "#b8cbb8", "#7bc47f"),
-    "روشن حرفه‌ای": _theme("#edf1f5", "#ffffff", "#f7f9fb", "#aebdca", "#3b6f98", "#4e87b5", "#172432", "#627384", "#4c91c8"),
+    "Studio Dark (Default)": _theme("#1a1a1a", "#242424", "#2d2d2d", "#3d3d3d", "#0078d4", "#2b88d8", "#ffffff", "#aaaaaa", "#00a2ff"),
+    "Professional Light": _theme("#f5f7fa", "#ffffff", "#eff3f8", "#d1d9e6", "#3b6f98", "#4e87b5", "#172432", "#627384", "#4c91c8"),
 }
-
-DARK_STEEL_THEME = THEMES["تیره فولادی"]
