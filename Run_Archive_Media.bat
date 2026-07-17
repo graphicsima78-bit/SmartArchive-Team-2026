@@ -1,5 +1,7 @@
 @echo off
 title ArchivePro - Media Master
-echo Starting Specialized Audio & Video Tool...
-python media_main.py
+echo Path: %~dp0
+echo Starting Professional Media Archive Engine...
+python "%~dp0media_main.py"
+if %errorlevel% neq 0 pause
 pause
