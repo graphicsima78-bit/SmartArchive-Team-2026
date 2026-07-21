@@ -1,0 +1,13 @@
+PySide6
+opencv-python
+pillow
+numpy
+mutagen
+PyPDF2
+pdfplumber
+openpyxl
+ExifRead
+pytesseract
+jdatetime
+requests
+pyinstaller
